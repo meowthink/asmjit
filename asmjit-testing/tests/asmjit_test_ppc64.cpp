@@ -1016,6 +1016,222 @@ static bool testBranchExt() {
   return checkWords(code, expected, 9);
 }
 
+static bool testFpMemory() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.lfs(ppc::f1, ppc::ptr(ppc::r3, 8));
+  a.lfsu(ppc::f1, ppc::ptr(ppc::r3, 8));
+  a.lfsx(ppc::f1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lfsux(ppc::f1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lfd(ppc::f1, ppc::ptr(ppc::r3, 8));
+  a.lfdu(ppc::f1, ppc::ptr(ppc::r3, 8));
+  a.lfdx(ppc::f1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lfdux(ppc::f1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lfiwax(ppc::f1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lfiwzx(ppc::f1, ppc::ptr(ppc::r3, ppc::r4));
+  a.stfs(ppc::f2, ppc::ptr(ppc::r3, 8));
+  a.stfsu(ppc::f2, ppc::ptr(ppc::r3, 8));
+  a.stfsx(ppc::f2, ppc::ptr(ppc::r3, ppc::r4));
+  a.stfsux(ppc::f2, ppc::ptr(ppc::r3, ppc::r4));
+  a.stfd(ppc::f2, ppc::ptr(ppc::r3, 8));
+  a.stfdu(ppc::f2, ppc::ptr(ppc::r3, 8));
+  a.stfdx(ppc::f2, ppc::ptr(ppc::r3, ppc::r4));
+  a.stfdux(ppc::f2, ppc::ptr(ppc::r3, ppc::r4));
+  a.stfiwx(ppc::f2, ppc::ptr(ppc::r3, ppc::r4));
+
+  const uint32_t expected[] = {
+    0xC0230008u, 0xC4230008u, 0x7C23242Eu, 0x7C23246Eu,
+    0xC8230008u, 0xCC230008u, 0x7C2324AEu, 0x7C2324EEu,
+    0x7C2326AEu, 0x7C2326EEu,
+    0xD0430008u, 0xD4430008u, 0x7C43252Eu, 0x7C43256Eu,
+    0xD8430008u, 0xDC430008u, 0x7C4325AEu, 0x7C4325EEu,
+    0x7C4327AEu
+  };
+  return checkWords(code, expected, 19);
+}
+
+static bool testFpArithmetic() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.fmr(ppc::f1, ppc::f2);
+  a.fneg(ppc::f1, ppc::f2);
+  a.fabs(ppc::f1, ppc::f2);
+  a.fnabs(ppc::f1, ppc::f2);
+  a.fcpsgn(ppc::f1, ppc::f2, ppc::f3);
+  a.fadd(ppc::f1, ppc::f2, ppc::f3);
+  a.fsub(ppc::f1, ppc::f2, ppc::f3);
+  a.fmul(ppc::f1, ppc::f2, ppc::f3);
+  a.fdiv(ppc::f1, ppc::f2, ppc::f3);
+  a.fsqrt(ppc::f1, ppc::f2);
+  a.fre(ppc::f1, ppc::f2);
+  a.frsqrte(ppc::f1, ppc::f2);
+  a.fadds(ppc::f1, ppc::f2, ppc::f3);
+  a.fsubs(ppc::f1, ppc::f2, ppc::f3);
+  a.fmuls(ppc::f1, ppc::f2, ppc::f3);
+  a.fdivs(ppc::f1, ppc::f2, ppc::f3);
+  a.fsqrts(ppc::f1, ppc::f2);
+  a.fres(ppc::f1, ppc::f2);
+  a.frsqrtes(ppc::f1, ppc::f2);
+  a.fmadd(ppc::f1, ppc::f2, ppc::f3, ppc::f4);
+  a.fmsub(ppc::f1, ppc::f2, ppc::f3, ppc::f4);
+  a.fnmadd(ppc::f1, ppc::f2, ppc::f3, ppc::f4);
+  a.fnmsub(ppc::f1, ppc::f2, ppc::f3, ppc::f4);
+  a.fmadds(ppc::f1, ppc::f2, ppc::f3, ppc::f4);
+  a.fmsubs(ppc::f1, ppc::f2, ppc::f3, ppc::f4);
+  a.fnmadds(ppc::f1, ppc::f2, ppc::f3, ppc::f4);
+  a.fnmsubs(ppc::f1, ppc::f2, ppc::f3, ppc::f4);
+  a.fadd(ppc::f1, ppc::f2, ppc::f3, true);
+  a.fsub(ppc::f1, ppc::f2, ppc::f3, true);
+  a.fmadd(ppc::f1, ppc::f2, ppc::f3, ppc::f4, true);
+  a.fsel(ppc::f1, ppc::f2, ppc::f3, ppc::f4);
+
+  const uint32_t expected[] = {
+    0xFC201090u, 0xFC201050u, 0xFC201210u, 0xFC201110u, 0xFC221810u,
+    0xFC22182Au, 0xFC221828u, 0xFC2200F2u, 0xFC221824u,
+    0xFC20102Cu, 0xFC201030u, 0xFC201034u,
+    0xEC22182Au, 0xEC221828u, 0xEC2200F2u, 0xEC221824u,
+    0xEC20102Cu, 0xEC201030u, 0xEC201034u,
+    0xFC2220FAu, 0xFC2220F8u, 0xFC2220FEu, 0xFC2220FCu,
+    0xEC2220FAu, 0xEC2220F8u, 0xEC2220FEu, 0xEC2220FCu,
+    0xFC22182Bu, 0xFC221829u, 0xFC2220FBu, 0xFC2220EEu
+  };
+  return checkWords(code, expected, 31);
+}
+
+static bool testFpConvertFpscr() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.frin(ppc::f1, ppc::f2);
+  a.friz(ppc::f1, ppc::f2);
+  a.frip(ppc::f1, ppc::f2);
+  a.frim(ppc::f1, ppc::f2);
+  a.fcfid(ppc::f1, ppc::f2);
+  a.fcfidu(ppc::f1, ppc::f2);
+  a.fcfids(ppc::f1, ppc::f2);
+  a.fcfidus(ppc::f1, ppc::f2);
+  a.fctiw(ppc::f1, ppc::f2);
+  a.fctiwz(ppc::f1, ppc::f2);
+  a.fctiwu(ppc::f1, ppc::f2);
+  a.fctiwuz(ppc::f1, ppc::f2);
+  a.fctid(ppc::f1, ppc::f2);
+  a.fctidz(ppc::f1, ppc::f2);
+  a.fctidu(ppc::f1, ppc::f2);
+  a.fctiduz(ppc::f1, ppc::f2);
+  a.frsp(ppc::f1, ppc::f2);
+  a.fcmpu(0, ppc::f1, ppc::f2);
+  a.fcmpo(1, ppc::f1, ppc::f2);
+  a.ftdiv(1, ppc::f2, ppc::f3);
+  a.ftsqrt(1, ppc::f2);
+  a.mffs(ppc::f1);
+  a.mffsce(ppc::f1);
+  a.mffsl(ppc::f1);
+  a.mffscrn(ppc::f1, ppc::f2);
+  a.mffscrni(ppc::f1, 2);
+  a.mffscdrn(ppc::f1, ppc::f2);
+  a.mffscdrni(ppc::f1, 2);
+  a.mtfsf(0xFF, ppc::f2);
+  a.mtfsf(0x80, ppc::f2);
+  a.mtfsb0(2);
+  a.mtfsb1(2);
+  a.mtfsfi(2, 2);
+  a.mcrfs(1, 2);
+
+  const uint32_t expected[] = {
+    0xFC201310u, 0xFC201350u, 0xFC201390u, 0xFC2013D0u,
+    0xFC20169Cu, 0xFC20179Cu, 0xEC20169Cu, 0xEC20179Cu,
+    0xFC20101Cu, 0xFC20101Eu, 0xFC20111Cu, 0xFC20111Eu,
+    0xFC20165Cu, 0xFC20165Eu, 0xFC20175Cu, 0xFC20175Eu,
+    0xFC201018u,
+    0xFC011000u, 0xFC811040u, 0xFC821900u, 0xFC801140u,
+    0xFC20048Eu, 0xFC21048Eu, 0xFC38048Eu,
+    0xFC36148Eu, 0xFC37148Eu, 0xFC34148Eu, 0xFC35148Eu,
+    0xFDFE158Eu, 0xFD00158Eu,
+    0xFC40008Cu, 0xFC40004Cu, 0xFD00210Cu, 0xFC880080u
+  };
+  return checkWords(code, expected, 34);
+}
+
+static bool testBailFpSpecial() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  Label bail = a.new_label();
+  Label done = a.new_label();
+  a.bailIfFPSpecial(ppc::f1, bail);
+  a.li(ppc::r3, 1);
+  a.b(done);
+  a.bind(bail);
+  a.li(ppc::r3, 0);
+  a.bind(done);
+  a.blr();
+
+  const uint32_t expected[] = {
+    0xFC010840u, // fcmpo cr0, f1, f1
+    0x4183003Cu, // bc 12, 3, +60 (bail)
+    0xD821FFF8u, // stfd f1, -8(r1)
+    0xE801FFF8u, // ld r0, -8(r1)
+    0x78000040u, // rldicl r0, r0, 0, 1
+    0x396007FFu, // li r11, 0x7FF
+    0x796BA2C6u, // sldi r11, r11, 52
+    0x7C205840u, // cmpld r0, r11
+    0x40800020u, // bge +32 (bail)
+    0x780B6520u, // srdi r11, r0, 52
+    0x2C2B0000u, // cmpdi r11, 0
+    0x4082000Cu, // bne +12 (skip)
+    0x2C200000u, // cmpdi r0, 0
+    0x4082000Cu, // bne +12 (bail)
+    0x38600001u, // li r3, 1
+    0x48000008u, // b +8 (done)
+    0x38600000u, // li r3, 0
+    0x4E800020u  // blr
+  };
+  return checkWords(code, expected, 18);
+}
+
+static bool testPrologFpSaves() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.prolog(320, 0x7, 0x7); // save r14..r16 and f14..f16
+  a.epilog(320, 0x7, 0x7);
+
+  const uint32_t expected[] = {
+    0x7C0802A6u, 0xF8010010u, 0x7D600026u, 0x91610008u,
+    0xD9C1FF70u, 0xD9E1FF78u, 0xDA01FF80u, // stfd f14..f16
+    0xF9C1FEE0u, 0xF9E1FEE8u, 0xFA01FEF0u, // std r14..r16
+    0xF821FEC1u, // stdu r1, -320(r1)
+    0x38210140u, // addi r1, r1, 320
+    0xEA01FEF0u, 0xE9E1FEE8u, 0xE9C1FEE0u, // ld r16..r14
+    0xCA01FF80u, 0xC9E1FF78u, 0xC9C1FF70u, // lfd f16..f14
+    0x81610008u, 0x7D638120u,
+    0xE8010010u, 0x7C0803A6u, 0x4E800020u
+  };
+  return checkWords(code, expected, 23);
+}
+
 static bool testAlignEmbed() {
   CodeHolder code;
   if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
@@ -1085,6 +1301,10 @@ static bool testBLongGolden() {
 #if ASMJIT_ARCH_PPC == 64
 extern "C" uint64_t ppcTestGccHelper(uint64_t a, uint64_t b) {
   return a * 3 + b;
+}
+
+extern "C" double ppcTestFpHelper(double a, double b) {
+  return a * 3.0 + b;
 }
 
 static bool testExecution() {
@@ -1302,6 +1522,153 @@ static bool testExecutionNonvolatile() {
   const uint64_t expected = 22 + 0x1234 + 0x5678 + 0x2ABC;
   return keep * 7 + r == keep * 7 + expected;
 }
+
+static bool testExecutionFp() {
+  using Fn = int64_t (*)(double, double);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = a.minimum_frame_size();
+  a.prolog(frame_size);
+
+  a.fadd(ppc::f3, ppc::f1, ppc::f2);          // a + b
+  a.fsub(ppc::f4, ppc::f1, ppc::f2);          // a - b
+  a.fmul(ppc::f5, ppc::f3, ppc::f4);          // (a+b)(a-b)
+  a.fmadd(ppc::f6, ppc::f1, ppc::f2, ppc::f1); // a*b + a
+  a.fdiv(ppc::f7, ppc::f5, ppc::f6);
+  a.fabs(ppc::f8, ppc::f7);
+  a.fneg(ppc::f9, ppc::f8);
+  a.frsp(ppc::f10, ppc::f9);
+  a.fctidz(ppc::f11, ppc::f10);
+  a.stfd(ppc::f11, ppc::ptr(ppc::r1, -8)); // move integer result to a GPR
+  a.ld(ppc::r3, ppc::ptr(ppc::r1, -8));
+
+  a.epilog(frame_size);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  return fn(5.5, 2.25) == -1; // trunc(-(a+b)(a-b) / (a*b+a))
+}
+
+static bool testExecutionFpCompare() {
+  using Fn = int64_t (*)(double, double);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = a.minimum_frame_size();
+  Label less = a.new_label();
+  Label done = a.new_label();
+  a.prolog(frame_size);
+
+  a.fcmpu(1, ppc::f1, ppc::f2);
+  a.bc(12, 4, less); // CR1 LT
+  a.li(ppc::r3, 0);
+  a.b(done);
+  a.bind(less);
+  a.li(ppc::r3, 1);
+  a.bind(done);
+
+  a.epilog(frame_size);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  return fn(1.5, 2.5) == 1 && fn(3.5, 2.5) == 0;
+}
+
+static bool testExecutionFpNonvolatile() {
+  using Fn = double (*)(double, double);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = a.minimum_frame_size() + 144 + 48; // f14..f16 area + GPR area
+  a.prolog(frame_size, 0, 0x7); // save f14, f15, f16
+
+  a.fmr(ppc::f14, ppc::f1);
+  a.fmr(ppc::f15, ppc::f2);
+
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+  a.callDescriptor((uint64_t)func_as_ptr(&ppcTestFpHelper));
+#else
+  a.call((uint64_t)func_as_ptr(&ppcTestFpHelper));
+#endif
+
+  a.fadd(ppc::f1, ppc::f1, ppc::f14); // (a*3+b) + a
+  a.fadd(ppc::f1, ppc::f1, ppc::f15); // + b
+
+  a.epilog(frame_size, 0, 0x7);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  const double keep = 3.75; // kept live across the call in a callee-saved FPR
+  const double r = fn(1.5, 2.25);
+  const double expected = 4.0 * 1.5 + 2.0 * 2.25;
+  return keep * r == keep * expected && r == expected;
+}
+
+static bool testExecutionFpClassCheck() {
+  using Fn = int64_t (*)(double);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = a.minimum_frame_size();
+  Label bail = a.new_label();
+  Label done = a.new_label();
+  a.prolog(frame_size);
+  a.bailIfFPSpecial(ppc::f1, bail);
+  a.li(ppc::r3, 1);
+  a.b(done);
+  a.bind(bail);
+  a.li(ppc::r3, 0);
+  a.bind(done);
+  a.epilog(frame_size);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  auto bitsToDouble = [](uint64_t bits) {
+    double d;
+    std::memcpy(&d, &bits, 8);
+    return d;
+  };
+
+  return fn(1.0) == 1 && fn(0.0) == 1 && fn(-2.5) == 1 &&
+         fn(bitsToDouble(0x0000000000000001ull)) == 0 && // denormal
+         fn(bitsToDouble(0x7FF0000000000000ull)) == 0 && // +inf
+         fn(bitsToDouble(0xFFF0000000000000ull)) == 0 && // -inf
+         fn(bitsToDouble(0x7FF8000000000000ull)) == 0;   // NaN
+}
+
 static bool testExecutionCallHelper() {
 #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
   return true; // ELFv1 calls are exercised through callDescriptor() elsewhere.
@@ -1430,6 +1797,11 @@ int main() {
   ok &= testLogicalShiftExt();
   ok &= testSystemRegsAndCr();
   ok &= testBranchExt();
+  ok &= testFpMemory();
+  ok &= testFpArithmetic();
+  ok &= testFpConvertFpscr();
+  ok &= testBailFpSpecial();
+  ok &= testPrologFpSaves();
   ok &= testAlignEmbed();
   ok &= testCallHelperGolden();
   ok &= testBLongGolden();
@@ -1439,6 +1811,10 @@ int main() {
   ok &= testExecutionStep5();
   ok &= testExecutionLargeFrame();
   ok &= testExecutionNonvolatile();
+  ok &= testExecutionFp();
+  ok &= testExecutionFpCompare();
+  ok &= testExecutionFpNonvolatile();
+  ok &= testExecutionFpClassCheck();
   ok &= testExecutionCallHelper();
   ok &= testExecutionTailCall();
   ok &= testExecutionBLong();

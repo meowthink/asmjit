@@ -57,37 +57,58 @@ ASMJIT_FAVOR_SIZE Error init_func_detail(FuncDetail& func, const FuncSignature& 
       if (type_id == TypeId::kVoid)
         break;
 
-      if (!TypeUtils::is_int(type_id)) {
+      if (TypeUtils::is_int(type_id)) {
+        func._rets[value_index].init_reg(RegType::kGp64, 3, type_id);
+      }
+      else if (TypeUtils::is_float(type_id)) {
+        func._rets[value_index].init_reg(RegType::kVec64, 1, type_id);
+      }
+      else {
         return make_error(Error::kInvalidRegType);
       }
-
-      func._rets[value_index].init_reg(RegType::kGp64, 3, type_id);
     }
   }
 
   uint32_t gp_pos = 0;
+  uint32_t fp_pos = 0;
   for (uint32_t i = 0; i < func.arg_count(); i++) {
     FuncValue& arg = func._args[i][0];
     TypeId type_id = arg.type_id();
 
-    if (!TypeUtils::is_int(type_id)) {
-      return make_error(Error::kInvalidRegType);
+    if (TypeUtils::is_int(type_id)) {
+      uint32_t reg_id = Reg::kIdBad;
+      if (gp_pos < CallConv::kMaxRegArgsPerGroup) {
+        reg_id = cc._passed_order[RegGroup::kGp].id[gp_pos];
+      }
+
+      if (reg_id != Reg::kIdBad) {
+        arg.assign_reg_data(RegType::kGp64, reg_id);
+        func.add_used_regs(RegGroup::kGp, Support::bit_mask<RegMask>(reg_id));
+        gp_pos++;
+      }
+      else {
+        arg.assign_stack_offset(int32_t(stack_offset));
+        stack_offset += 8;
+      }
+      continue;
     }
 
-    uint32_t reg_id = Reg::kIdBad;
-    if (gp_pos < CallConv::kMaxRegArgsPerGroup) {
-      reg_id = cc._passed_order[RegGroup::kGp].id[gp_pos];
+    if (TypeUtils::is_float(type_id)) {
+      // ELFv2/ELFv1: floating-point args are passed in f1..f13.
+      if (fp_pos < 13) {
+        uint32_t reg_id = fp_pos + 1;
+        arg.assign_reg_data(RegType::kVec64, reg_id);
+        func.add_used_regs(RegGroup::kVec, Support::bit_mask<RegMask>(reg_id));
+        fp_pos++;
+      }
+      else {
+        arg.assign_stack_offset(int32_t(stack_offset));
+        stack_offset += 8;
+      }
+      continue;
     }
 
-    if (reg_id != Reg::kIdBad) {
-      arg.assign_reg_data(RegType::kGp64, reg_id);
-      func.add_used_regs(RegGroup::kGp, Support::bit_mask<RegMask>(reg_id));
-      gp_pos++;
-    }
-    else {
-      arg.assign_stack_offset(int32_t(stack_offset));
-      stack_offset += 8;
-    }
+    return make_error(Error::kInvalidRegType);
   }
 
   return Error::kOk;

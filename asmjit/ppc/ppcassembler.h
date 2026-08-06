@@ -58,6 +58,46 @@ static constexpr Gp r29 { 29 };
 static constexpr Gp r30 { 30 };
 static constexpr Gp r31 { 31 };
 
+//! PowerPC floating-point register.
+class Fp : public Reg {
+public:
+  ASMJIT_DEFINE_FINAL_REG(Fp, Reg, RegTraits<RegType::kVec64>)
+};
+
+//! FPR constants.
+static constexpr Fp f0 { 0 };
+static constexpr Fp f1 { 1 };
+static constexpr Fp f2 { 2 };
+static constexpr Fp f3 { 3 };
+static constexpr Fp f4 { 4 };
+static constexpr Fp f5 { 5 };
+static constexpr Fp f6 { 6 };
+static constexpr Fp f7 { 7 };
+static constexpr Fp f8 { 8 };
+static constexpr Fp f9 { 9 };
+static constexpr Fp f10 { 10 };
+static constexpr Fp f11 { 11 };
+static constexpr Fp f12 { 12 };
+static constexpr Fp f13 { 13 };
+static constexpr Fp f14 { 14 };
+static constexpr Fp f15 { 15 };
+static constexpr Fp f16 { 16 };
+static constexpr Fp f17 { 17 };
+static constexpr Fp f18 { 18 };
+static constexpr Fp f19 { 19 };
+static constexpr Fp f20 { 20 };
+static constexpr Fp f21 { 21 };
+static constexpr Fp f22 { 22 };
+static constexpr Fp f23 { 23 };
+static constexpr Fp f24 { 24 };
+static constexpr Fp f25 { 25 };
+static constexpr Fp f26 { 26 };
+static constexpr Fp f27 { 27 };
+static constexpr Fp f28 { 28 };
+static constexpr Fp f29 { 29 };
+static constexpr Fp f30 { 30 };
+static constexpr Fp f31 { 31 };
+
 //! ELFv1 function descriptor
 struct FunctionDescriptor {
   void* entry;
@@ -744,6 +784,206 @@ public:
 
   //! \}
 
+  //! \name Floating-Point Memory Instructions
+  //! \{
+
+  //! `lfs frt, d(ra)` (load floating single).
+  ASMJIT_API Error lfs(Fp frt, const Mem& m);
+  //! `lfsu frt, d(ra)` (load floating single with update).
+  ASMJIT_API Error lfsu(Fp frt, const Mem& m);
+  //! `lfsx frt, ra, rb` (load floating single indexed).
+  ASMJIT_API Error lfsx(Fp frt, const Mem& m);
+  //! `lfsux frt, ra, rb` (load floating single with update indexed).
+  ASMJIT_API Error lfsux(Fp frt, const Mem& m);
+  //! `lfd frt, d(ra)` (load floating double).
+  ASMJIT_API Error lfd(Fp frt, const Mem& m);
+  //! `lfdu frt, d(ra)` (load floating double with update).
+  ASMJIT_API Error lfdu(Fp frt, const Mem& m);
+  //! `lfdx frt, ra, rb` (load floating double indexed).
+  ASMJIT_API Error lfdx(Fp frt, const Mem& m);
+  //! `lfdux frt, ra, rb` (load floating double with update indexed).
+  ASMJIT_API Error lfdux(Fp frt, const Mem& m);
+  //! `lfiwax frt, ra, rb` (load floating-point integer word algebraic indexed).
+  ASMJIT_API Error lfiwax(Fp frt, const Mem& m);
+  //! `lfiwzx frt, ra, rb` (load floating-point integer word and zero indexed).
+  ASMJIT_API Error lfiwzx(Fp frt, const Mem& m);
+  //! `stfs frs, d(ra)` (store floating single).
+  ASMJIT_API Error stfs(Fp frs, const Mem& m);
+  //! `stfsu frs, d(ra)` (store floating single with update).
+  ASMJIT_API Error stfsu(Fp frs, const Mem& m);
+  //! `stfsx frs, ra, rb` (store floating single indexed).
+  ASMJIT_API Error stfsx(Fp frs, const Mem& m);
+  //! `stfsux frs, ra, rb` (store floating single with update indexed).
+  ASMJIT_API Error stfsux(Fp frs, const Mem& m);
+  //! `stfd frs, d(ra)` (store floating double).
+  ASMJIT_API Error stfd(Fp frs, const Mem& m);
+  //! `stfdu frs, d(ra)` (store floating double with update).
+  ASMJIT_API Error stfdu(Fp frs, const Mem& m);
+  //! `stfdx frs, ra, rb` (store floating double indexed).
+  ASMJIT_API Error stfdx(Fp frs, const Mem& m);
+  //! `stfdux frs, ra, rb` (store floating double with update indexed).
+  ASMJIT_API Error stfdux(Fp frs, const Mem& m);
+  //! `stfiwx frs, ra, rb` (store floating-point as integer word indexed).
+  ASMJIT_API Error stfiwx(Fp frs, const Mem& m);
+
+  //! \}
+
+  //! \name Floating-Point Move Instructions
+  //! \{
+
+  //! `fmr frt, frb`.
+  ASMJIT_API Error fmr(Fp frt, Fp frb, bool rc = false);
+  //! `fneg frt, frb`.
+  ASMJIT_API Error fneg(Fp frt, Fp frb, bool rc = false);
+  //! `fabs frt, frb`.
+  ASMJIT_API Error fabs(Fp frt, Fp frb, bool rc = false);
+  //! `fnabs frt, frb`.
+  ASMJIT_API Error fnabs(Fp frt, Fp frb, bool rc = false);
+  //! `fcpsgn frt, fra, frb` (copy sign).
+  ASMJIT_API Error fcpsgn(Fp frt, Fp fra, Fp frb);
+
+  //! \}
+
+  //! \name Floating-Point Arithmetic Instructions
+  //! \{
+
+  //! `fadd frt, fra, frb` (double).
+  ASMJIT_API Error fadd(Fp frt, Fp fra, Fp frb, bool rc = false);
+  //! `fadds frt, fra, frb` (single).
+  ASMJIT_API Error fadds(Fp frt, Fp fra, Fp frb, bool rc = false);
+  //! `fsub frt, fra, frb`.
+  ASMJIT_API Error fsub(Fp frt, Fp fra, Fp frb, bool rc = false);
+  //! `fsubs frt, fra, frb`.
+  ASMJIT_API Error fsubs(Fp frt, Fp fra, Fp frb, bool rc = false);
+  //! `fmul frt, fra, frc`.
+  ASMJIT_API Error fmul(Fp frt, Fp fra, Fp frc, bool rc = false);
+  //! `fmuls frt, fra, frc`.
+  ASMJIT_API Error fmuls(Fp frt, Fp fra, Fp frc, bool rc = false);
+  //! `fdiv frt, fra, frb`.
+  ASMJIT_API Error fdiv(Fp frt, Fp fra, Fp frb, bool rc = false);
+  //! `fdivs frt, fra, frb`.
+  ASMJIT_API Error fdivs(Fp frt, Fp fra, Fp frb, bool rc = false);
+  //! `fsqrt frt, frb`.
+  ASMJIT_API Error fsqrt(Fp frt, Fp frb, bool rc = false);
+  //! `fsqrts frt, frb`.
+  ASMJIT_API Error fsqrts(Fp frt, Fp frb, bool rc = false);
+  //! `fre frt, frb` (reciprocal estimate).
+  ASMJIT_API Error fre(Fp frt, Fp frb, bool rc = false);
+  //! `fres frt, frb`.
+  ASMJIT_API Error fres(Fp frt, Fp frb, bool rc = false);
+  //! `frsqrte frt, frb` (reciprocal square root estimate).
+  ASMJIT_API Error frsqrte(Fp frt, Fp frb, bool rc = false);
+  //! `frsqrtes frt, frb`.
+  ASMJIT_API Error frsqrtes(Fp frt, Fp frb, bool rc = false);
+  //! `fmadd frt, fra, frc, frb` (frt = fra*frc + frb).
+  ASMJIT_API Error fmadd(Fp frt, Fp fra, Fp frc, Fp frb, bool rc = false);
+  //! `fmadds frt, fra, frc, frb`.
+  ASMJIT_API Error fmadds(Fp frt, Fp fra, Fp frc, Fp frb, bool rc = false);
+  //! `fmsub frt, fra, frc, frb`.
+  ASMJIT_API Error fmsub(Fp frt, Fp fra, Fp frc, Fp frb, bool rc = false);
+  //! `fmsubs frt, fra, frc, frb`.
+  ASMJIT_API Error fmsubs(Fp frt, Fp fra, Fp frc, Fp frb, bool rc = false);
+  //! `fnmadd frt, fra, frc, frb`.
+  ASMJIT_API Error fnmadd(Fp frt, Fp fra, Fp frc, Fp frb, bool rc = false);
+  //! `fnmadds frt, fra, frc, frb`.
+  ASMJIT_API Error fnmadds(Fp frt, Fp fra, Fp frc, Fp frb, bool rc = false);
+  //! `fnmsub frt, fra, frc, frb`.
+  ASMJIT_API Error fnmsub(Fp frt, Fp fra, Fp frc, Fp frb, bool rc = false);
+  //! `fnmsubs frt, fra, frc, frb`.
+  ASMJIT_API Error fnmsubs(Fp frt, Fp fra, Fp frc, Fp frb, bool rc = false);
+
+  //! \}
+
+  //! \name Floating-Point Rounding & Conversion Instructions
+  //! \{
+
+  //! `frin frt, frb` (round to nearest).
+  ASMJIT_API Error frin(Fp frt, Fp frb);
+  //! `friz frt, frb` (round toward zero).
+  ASMJIT_API Error friz(Fp frt, Fp frb);
+  //! `frip frt, frb` (round toward plus infinity).
+  ASMJIT_API Error frip(Fp frt, Fp frb);
+  //! `frim frt, frb` (round toward minus infinity).
+  ASMJIT_API Error frim(Fp frt, Fp frb);
+  //! `frsp frt, frb` (round to single precision).
+  ASMJIT_API Error frsp(Fp frt, Fp frb);
+  //! `fcfid frt, frb` (convert to double from signed integer doubleword).
+  ASMJIT_API Error fcfid(Fp frt, Fp frb);
+  //! `fcfidu frt, frb` (convert to double from unsigned integer doubleword).
+  ASMJIT_API Error fcfidu(Fp frt, Fp frb);
+  //! `fcfids frt, frb` (convert to single from signed integer doubleword).
+  ASMJIT_API Error fcfids(Fp frt, Fp frb);
+  //! `fcfidus frt, frb` (convert to single from unsigned integer doubleword).
+  ASMJIT_API Error fcfidus(Fp frt, Fp frb);
+  //! `fctiw frt, frb` (convert to integer word, FPSCR rounding).
+  ASMJIT_API Error fctiw(Fp frt, Fp frb);
+  //! `fctiwz frt, frb` (convert to integer word, truncate).
+  ASMJIT_API Error fctiwz(Fp frt, Fp frb);
+  //! `fctiwu frt, frb` (convert to unsigned integer word).
+  ASMJIT_API Error fctiwu(Fp frt, Fp frb);
+  //! `fctiwuz frt, frb` (convert to unsigned integer word, truncate).
+  ASMJIT_API Error fctiwuz(Fp frt, Fp frb);
+  //! `fctid frt, frb` (convert to integer doubleword).
+  ASMJIT_API Error fctid(Fp frt, Fp frb);
+  //! `fctidz frt, frb` (convert to integer doubleword, truncate).
+  ASMJIT_API Error fctidz(Fp frt, Fp frb);
+  //! `fctidu frt, frb` (convert to unsigned integer doubleword).
+  ASMJIT_API Error fctidu(Fp frt, Fp frb);
+  //! `fctiduz frt, frb` (convert to unsigned integer doubleword, truncate).
+  ASMJIT_API Error fctiduz(Fp frt, Fp frb);
+
+  //! \}
+
+  //! \name Floating-Point Compare & Select Instructions
+  //! \{
+
+  //! `fcmpu bf, fra, frb` (floating compare unordered).
+  ASMJIT_API Error fcmpu(uint32_t bf, Fp fra, Fp frb);
+  //! `fcmpo bf, fra, frb` (floating compare ordered).
+  ASMJIT_API Error fcmpo(uint32_t bf, Fp fra, Fp frb);
+  //! `ftdiv bf, fra, frb` (floating test divide).
+  ASMJIT_API Error ftdiv(uint32_t bf, Fp fra, Fp frb);
+  //! `ftsqrt bf, frb` (floating test square root).
+  ASMJIT_API Error ftsqrt(uint32_t bf, Fp frb);
+  //! `fsel frt, fra, frc, frb` (floating select).
+  ASMJIT_API Error fsel(Fp frt, Fp fra, Fp frc, Fp frb);
+
+  //! \}
+
+  //! \name Floating-Point Status & Control Register Instructions
+  //! \{
+
+  //! `mffs frt` (move from FPSCR).
+  ASMJIT_API Error mffs(Fp frt, bool rc = false);
+  //! `mffsce frt` (move from FPSCR and clear enables).
+  ASMJIT_API Error mffsce(Fp frt);
+  //! `mffsl frt` (move from FPSCR lightweight).
+  ASMJIT_API Error mffsl(Fp frt);
+  //! `mffscrn frt, frb` (move from FPSCR and set RN).
+  ASMJIT_API Error mffscrn(Fp frt, Fp frb);
+  //! `mffscrni frt, rm` (move from FPSCR and set RN immediate).
+  ASMJIT_API Error mffscrni(Fp frt, uint32_t rm);
+  //! `mffscdrn frt, frb` (move from FPSCR and set DRN).
+  ASMJIT_API Error mffscdrn(Fp frt, Fp frb);
+  //! `mffscdrni frt, drm` (move from FPSCR and set DRN immediate).
+  ASMJIT_API Error mffscdrni(Fp frt, uint32_t drm);
+  //! `mtfsf fxm, frb` (move to FPSCR fields).
+  ASMJIT_API Error mtfsf(uint32_t fxm, Fp frb);
+  //! `mtfsb0 crb` (move to FPSCR bit 0).
+  ASMJIT_API Error mtfsb0(uint32_t crb);
+  //! `mtfsb1 crb` (move to FPSCR bit 1).
+  ASMJIT_API Error mtfsb1(uint32_t crb);
+  //! `mtfsfi bf, imm` (move to FPSCR field immediate).
+  ASMJIT_API Error mtfsfi(uint32_t bf, uint32_t imm);
+  //! `mcrfs bf, bfa` (move to CR from FPSCR).
+  ASMJIT_API Error mcrfs(uint32_t bf, uint32_t bfa);
+  //! Branches to `bail` if the value in `fr` is a NaN, infinity, or denormal
+  //! (zeros and normals pass). Used by JITs to send special FP values to a
+  //! slow path; clobbers r0, r11, and r12, and uses the red zone at -8(r1).
+  ASMJIT_API Error bailIfFPSpecial(Fp fr, const Label& bail);
+
+  //! \}
+
   //! \name Function Prologue & Epilogue
   //! \{
 
@@ -758,18 +998,19 @@ public:
   }
 
   //! Saves LR, allocates `frame_size` bytes with an atomic back-chain update,
-  //! and returns. When `save_mask` is nonzero the nonvolatile CR fields and
-  //! the selected GPRs are saved exactly like GCC: LR at 16(caller SP), CR
-  //! (word) at 8(caller SP), and r14+k at -(144 - 8*k)(caller SP), which puts
-  //! the GPR save area at the top of the allocated frame.
+  //! and returns. When `save_mask` or `fpr_mask` is nonzero the nonvolatile
+  //! CR fields and the selected GPRs/FPRs are saved exactly like GCC: LR at
+  //! 16(caller SP), CR (word) at 8(caller SP), FPR f14+k at -(144 - 8*k)
+  //! (caller SP), and GPR r14+k at -(fpr_bytes + 144 - 8*k)(caller SP) -- the
+  //! FP save area sits above the GPR save area at the top of the frame.
   //!
-  //! Mask bit `k` (k = 0..17) selects GPR r14+k. `frame_size` must be a
-  //! multiple of 16 and cover the highest saved slot plus the 32-byte fixed
-  //! area (e.g. 176 bytes when r14 is saved, 40 bytes when only r31 is).
+  //! Mask bit `k` (k = 0..17) selects GPR r14+k / FPR f14+k. `frame_size` must
+  //! be a multiple of 16 and cover the fixed 32-byte area plus the GPR and FPR
+  //! save areas (e.g. 176 bytes when r14 is saved, 320 when r14 and f14 are).
   //! Frames larger than 32 KiB use a multi-instruction allocation.
-  ASMJIT_API Error prolog(int32_t frame_size, uint32_t save_mask = 0);
+  ASMJIT_API Error prolog(int32_t frame_size, uint32_t save_mask = 0, uint32_t fpr_mask = 0);
   //! Deallocates the frame, restores what `prolog()` saved, and returns.
-  ASMJIT_API Error epilog(int32_t frame_size, uint32_t save_mask = 0);
+  ASMJIT_API Error epilog(int32_t frame_size, uint32_t save_mask = 0, uint32_t fpr_mask = 0);
 
   //! \}
 

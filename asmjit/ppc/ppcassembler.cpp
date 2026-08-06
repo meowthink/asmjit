@@ -29,6 +29,13 @@ static inline uint32_t encode_rldi(uint32_t rs, uint32_t ra, uint8_t sh, uint8_t
          xo;
 }
 
+// A-form floating-point: frt = f(fra, frb, frc) with optional Rc (CR1) field.
+static inline uint32_t encode_fp(uint32_t op, uint32_t xo, uint32_t frt, uint32_t fra,
+                                 uint32_t frb, uint32_t frc, bool rc) noexcept {
+  return (op << 26) | (frt << 21) | (fra << 16) | (frb << 11) | (frc << 6) |
+         (xo << 1) | (rc ? 1u : 0u);
+}
+
 Assembler::Assembler(CodeHolder* code) noexcept
   : BaseAssembler() {
   _arch_mask = (uint64_t(1) << uint32_t(Arch::kPPC64_LE)) |
@@ -1318,6 +1325,383 @@ Error Assembler::cdtbcd(Gp ra, Gp rs) {
   return emitXRs(282u, ra, rs, false);
 }
 
+Error Assembler::lfs(Fp frt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((48u << 26) | (frt.id() << 21) | (m.base_id() << 16) | uint16_t(m.offset()));
+}
+
+Error Assembler::lfsu(Fp frt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((49u << 26) | (frt.id() << 21) | (m.base_id() << 16) | uint16_t(m.offset()));
+}
+
+Error Assembler::lfsx(Fp frt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (535u << 1));
+}
+
+Error Assembler::lfsux(Fp frt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (567u << 1));
+}
+
+Error Assembler::lfd(Fp frt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 3u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((50u << 26) | (frt.id() << 21) | (m.base_id() << 16) | uint16_t(m.offset()));
+}
+
+Error Assembler::lfdu(Fp frt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 3u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((51u << 26) | (frt.id() << 21) | (m.base_id() << 16) | uint16_t(m.offset()));
+}
+
+Error Assembler::lfdx(Fp frt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (599u << 1));
+}
+
+Error Assembler::lfdux(Fp frt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (631u << 1));
+}
+
+Error Assembler::lfiwax(Fp frt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (855u << 1));
+}
+
+Error Assembler::lfiwzx(Fp frt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (887u << 1));
+}
+
+Error Assembler::stfs(Fp frs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((52u << 26) | (frs.id() << 21) | (m.base_id() << 16) | uint16_t(m.offset()));
+}
+
+Error Assembler::stfsu(Fp frs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((53u << 26) | (frs.id() << 21) | (m.base_id() << 16) | uint16_t(m.offset()));
+}
+
+Error Assembler::stfsx(Fp frs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (663u << 1));
+}
+
+Error Assembler::stfsux(Fp frs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (695u << 1));
+}
+
+Error Assembler::stfd(Fp frs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 3u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((54u << 26) | (frs.id() << 21) | (m.base_id() << 16) | uint16_t(m.offset()));
+}
+
+Error Assembler::stfdu(Fp frs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 3u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((55u << 26) | (frs.id() << 21) | (m.base_id() << 16) | uint16_t(m.offset()));
+}
+
+Error Assembler::stfdx(Fp frs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (727u << 1));
+}
+
+Error Assembler::stfdux(Fp frs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (759u << 1));
+}
+
+Error Assembler::stfiwx(Fp frs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (frs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (983u << 1));
+}
+
+Error Assembler::fmr(Fp frt, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 72u, frt.id(), 0, frb.id(), 0, rc));
+}
+
+Error Assembler::fneg(Fp frt, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 40u, frt.id(), 0, frb.id(), 0, rc));
+}
+
+Error Assembler::fabs(Fp frt, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 264u, frt.id(), 0, frb.id(), 0, rc));
+}
+
+Error Assembler::fnabs(Fp frt, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 136u, frt.id(), 0, frb.id(), 0, rc));
+}
+
+Error Assembler::fcpsgn(Fp frt, Fp fra, Fp frb) {
+  return emit32(encode_fp(63u, 8u, frt.id(), fra.id(), frb.id(), 0, false));
+}
+
+Error Assembler::fadd(Fp frt, Fp fra, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 21u, frt.id(), fra.id(), frb.id(), 0, rc));
+}
+
+Error Assembler::fadds(Fp frt, Fp fra, Fp frb, bool rc) {
+  return emit32(encode_fp(59u, 21u, frt.id(), fra.id(), frb.id(), 0, rc));
+}
+
+Error Assembler::fsub(Fp frt, Fp fra, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 20u, frt.id(), fra.id(), frb.id(), 0, rc));
+}
+
+Error Assembler::fsubs(Fp frt, Fp fra, Fp frb, bool rc) {
+  return emit32(encode_fp(59u, 20u, frt.id(), fra.id(), frb.id(), 0, rc));
+}
+
+Error Assembler::fmul(Fp frt, Fp fra, Fp frc, bool rc) {
+  return emit32(encode_fp(63u, 25u, frt.id(), fra.id(), 0, frc.id(), rc));
+}
+
+Error Assembler::fmuls(Fp frt, Fp fra, Fp frc, bool rc) {
+  return emit32(encode_fp(59u, 25u, frt.id(), fra.id(), 0, frc.id(), rc));
+}
+
+Error Assembler::fdiv(Fp frt, Fp fra, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 18u, frt.id(), fra.id(), frb.id(), 0, rc));
+}
+
+Error Assembler::fdivs(Fp frt, Fp fra, Fp frb, bool rc) {
+  return emit32(encode_fp(59u, 18u, frt.id(), fra.id(), frb.id(), 0, rc));
+}
+
+Error Assembler::fsqrt(Fp frt, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 22u, frt.id(), 0, frb.id(), 0, rc));
+}
+
+Error Assembler::fsqrts(Fp frt, Fp frb, bool rc) {
+  return emit32(encode_fp(59u, 22u, frt.id(), 0, frb.id(), 0, rc));
+}
+
+Error Assembler::fre(Fp frt, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 24u, frt.id(), 0, frb.id(), 0, rc));
+}
+
+Error Assembler::fres(Fp frt, Fp frb, bool rc) {
+  return emit32(encode_fp(59u, 24u, frt.id(), 0, frb.id(), 0, rc));
+}
+
+Error Assembler::frsqrte(Fp frt, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 26u, frt.id(), 0, frb.id(), 0, rc));
+}
+
+Error Assembler::frsqrtes(Fp frt, Fp frb, bool rc) {
+  return emit32(encode_fp(59u, 26u, frt.id(), 0, frb.id(), 0, rc));
+}
+
+Error Assembler::fmadd(Fp frt, Fp fra, Fp frc, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 29u, frt.id(), fra.id(), frb.id(), frc.id(), rc));
+}
+
+Error Assembler::fmadds(Fp frt, Fp fra, Fp frc, Fp frb, bool rc) {
+  return emit32(encode_fp(59u, 29u, frt.id(), fra.id(), frb.id(), frc.id(), rc));
+}
+
+Error Assembler::fmsub(Fp frt, Fp fra, Fp frc, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 28u, frt.id(), fra.id(), frb.id(), frc.id(), rc));
+}
+
+Error Assembler::fmsubs(Fp frt, Fp fra, Fp frc, Fp frb, bool rc) {
+  return emit32(encode_fp(59u, 28u, frt.id(), fra.id(), frb.id(), frc.id(), rc));
+}
+
+Error Assembler::fnmadd(Fp frt, Fp fra, Fp frc, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 31u, frt.id(), fra.id(), frb.id(), frc.id(), rc));
+}
+
+Error Assembler::fnmadds(Fp frt, Fp fra, Fp frc, Fp frb, bool rc) {
+  return emit32(encode_fp(59u, 31u, frt.id(), fra.id(), frb.id(), frc.id(), rc));
+}
+
+Error Assembler::fnmsub(Fp frt, Fp fra, Fp frc, Fp frb, bool rc) {
+  return emit32(encode_fp(63u, 30u, frt.id(), fra.id(), frb.id(), frc.id(), rc));
+}
+
+Error Assembler::fnmsubs(Fp frt, Fp fra, Fp frc, Fp frb, bool rc) {
+  return emit32(encode_fp(59u, 30u, frt.id(), fra.id(), frb.id(), frc.id(), rc));
+}
+
+Error Assembler::frin(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 392u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::friz(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 424u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::frip(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 456u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::frim(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 488u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::frsp(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 12u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fcfid(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 846u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fcfidu(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 974u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fcfids(Fp frt, Fp frb) {
+  return emit32(encode_fp(59u, 846u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fcfidus(Fp frt, Fp frb) {
+  return emit32(encode_fp(59u, 974u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fctiw(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 14u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fctiwz(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 15u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fctiwu(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 142u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fctiwuz(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 143u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fctid(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 814u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fctidz(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 815u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fctidu(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 942u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fctiduz(Fp frt, Fp frb) {
+  return emit32(encode_fp(63u, 943u, frt.id(), 0, frb.id(), 0, false));
+}
+
+Error Assembler::fcmpu(uint32_t bf, Fp fra, Fp frb) {
+  return emit32((63u << 26) | (bf << 23) | (fra.id() << 16) | (frb.id() << 11));
+}
+
+Error Assembler::fcmpo(uint32_t bf, Fp fra, Fp frb) {
+  return emit32((63u << 26) | (bf << 23) | (fra.id() << 16) | (frb.id() << 11) | (32u << 1));
+}
+
+Error Assembler::ftdiv(uint32_t bf, Fp fra, Fp frb) {
+  return emit32((63u << 26) | (bf << 23) | (fra.id() << 16) | (frb.id() << 11) | (128u << 1));
+}
+
+Error Assembler::ftsqrt(uint32_t bf, Fp frb) {
+  return emit32((63u << 26) | (bf << 23) | (frb.id() << 11) | (160u << 1));
+}
+
+Error Assembler::fsel(Fp frt, Fp fra, Fp frc, Fp frb) {
+  return emit32(encode_fp(63u, 23u, frt.id(), fra.id(), frb.id(), frc.id(), false));
+}
+
+Error Assembler::mffs(Fp frt, bool rc) {
+  return emit32((63u << 26) | (frt.id() << 21) | (583u << 1) | (rc ? 1u : 0u));
+}
+
+Error Assembler::mffsce(Fp frt) {
+  return emit32((63u << 26) | (frt.id() << 21) | (1u << 16) | (583u << 1));
+}
+
+Error Assembler::mffsl(Fp frt) {
+  return emit32((63u << 26) | (frt.id() << 21) | (24u << 16) | (583u << 1));
+}
+
+Error Assembler::mffscrn(Fp frt, Fp frb) {
+  return emit32((63u << 26) | (frt.id() << 21) | (22u << 16) | (frb.id() << 11) | (583u << 1));
+}
+
+Error Assembler::mffscrni(Fp frt, uint32_t rm) {
+  return emit32((63u << 26) | (frt.id() << 21) | (23u << 16) | ((rm & 3u) << 11) | (583u << 1));
+}
+
+Error Assembler::mffscdrn(Fp frt, Fp frb) {
+  return emit32((63u << 26) | (frt.id() << 21) | (20u << 16) | (frb.id() << 11) | (583u << 1));
+}
+
+Error Assembler::mffscdrni(Fp frt, uint32_t drm) {
+  return emit32((63u << 26) | (frt.id() << 21) | (21u << 16) | ((drm & 3u) << 11) | (583u << 1));
+}
+
+Error Assembler::mtfsf(uint32_t fxm, Fp frb) {
+  return emit32((63u << 26) | ((fxm & 0xFFu) << 17) | (frb.id() << 11) | (711u << 1));
+}
+
+Error Assembler::mtfsb0(uint32_t crb) {
+  return emit32((63u << 26) | (crb << 21) | (70u << 1));
+}
+
+Error Assembler::mtfsb1(uint32_t crb) {
+  return emit32((63u << 26) | (crb << 21) | (38u << 1));
+}
+
+Error Assembler::mtfsfi(uint32_t bf, uint32_t imm) {
+  return emit32((63u << 26) | (bf << 23) | ((imm & 0xFu) << 12) | (134u << 1));
+}
+
+Error Assembler::mcrfs(uint32_t bf, uint32_t bfa) {
+  return emit32((63u << 26) | (bf << 23) | (bfa << 18) | (64u << 1));
+}
+
+Error Assembler::bailIfFPSpecial(Fp fr, const Label& bail) {
+  ASMJIT_PROPAGATE(fcmpo(0, fr, fr));
+  ASMJIT_PROPAGATE(bc(12, 3, bail));        // unordered (NaN)
+  ASMJIT_PROPAGATE(stfd(fr, ppc::ptr(r1, -8)));       // move the bits to a GPR
+  ASMJIT_PROPAGATE(ld(r0, ppc::ptr(r1, -8)));
+  ASMJIT_PROPAGATE(rldicl(r0, r0, 0, 1));   // drop the sign bit
+  ASMJIT_PROPAGATE(li(r11, 0x7FF));
+  ASMJIT_PROPAGATE(sldi(r11, r11, 52));     // r11 = 0x7FF0000000000000
+  ASMJIT_PROPAGATE(cmpld(r0, r11));
+  ASMJIT_PROPAGATE(bge(bail));              // infinity (NaN already handled)
+  ASMJIT_PROPAGATE(srdi(r11, r0, 52));      // exponent
+  ASMJIT_PROPAGATE(cmpdi(r11, 0));
+  Label skip = new_label();
+  ASMJIT_PROPAGATE(bne(skip));              // nonzero exponent -> normal
+  ASMJIT_PROPAGATE(cmpdi(r0, 0));
+  ASMJIT_PROPAGATE(bne(bail));              // zero exponent, nonzero mantissa -> denormal
+  return bind(skip);
+}
+
 Error Assembler::align(AlignMode align_mode, uint32_t alignment) {
   if (ASMJIT_UNLIKELY(!_code)) {
     return report_error(make_error(Error::kNotInitialized));
@@ -1339,38 +1723,53 @@ Error Assembler::align(AlignMode align_mode, uint32_t alignment) {
   return Error::kOk;
 }
 
-Error Assembler::prolog(int32_t frame_size, uint32_t save_mask) {
+Error Assembler::prolog(int32_t frame_size, uint32_t save_mask, uint32_t fpr_mask) {
   if (ASMJIT_UNLIKELY(!_code)) {
     return report_error(make_error(Error::kNotInitialized));
   }
 
   const uint32_t regs = save_mask & 0x3FFFFu; // Bits 0..17 select r14..r31.
-  // ABI-fixed slots: r14+k is saved at -(144 - 8*k) relative to the caller's
-  // SP, so the frame must cover the highest saved slot plus the 32-byte fixed
-  // area at its bottom.
+  const uint32_t fprs = fpr_mask & 0x3FFFFu;  // Bits 0..17 select f14..f31.
+  // ABI-fixed slots: FPR f14+k at -(144 - 8*k) and GPR r14+k below the FP
+  // save area at -(fpr_bytes + 144 - 8*k), relative to the caller's SP. The
+  // frame must cover the fixed 32-byte area plus both save areas.
   int32_t required = minimum_frame_size();
+  int32_t fp_bytes = 0;
+  if (fprs != 0) {
+    const uint32_t lowest = fprs & (~fprs + 1u); // Lowest set bit (highest register).
+    const uint32_t k_min = Support::popcnt(lowest - 1u);
+    fp_bytes = int32_t(8 * (18 - k_min));
+  }
   if (regs != 0) {
     const uint32_t lowest = regs & (~regs + 1u); // Lowest set bit (highest register).
     const uint32_t k_min = Support::popcnt(lowest - 1u);
-    required = 32 + int32_t(8 * (18 - k_min));
-    if (required < minimum_frame_size())
-      required = minimum_frame_size();
+    required = 32 + fp_bytes + int32_t(8 * (18 - k_min));
   }
+  else if (fprs != 0) {
+    required = 32 + fp_bytes;
+  }
+  if (required < minimum_frame_size())
+    required = minimum_frame_size();
   if (ASMJIT_UNLIKELY(frame_size < minimum_frame_size() || (frame_size & 15) != 0 ||
                       frame_size < required)) {
     return report_error(make_error(Error::kInvalidArgument));
   }
 
-  // Save LR and CR in the caller's fixed area and nonvolatile GPRs at the top
-  // of our own frame, exactly like GCC.
+  // Save LR and CR in the caller's fixed area and nonvolatile GPRs/FPRs at the
+  // top of our own frame, exactly like GCC.
   ASMJIT_PROPAGATE(mflr(r0));
   ASMJIT_PROPAGATE(std(r0, ppc::ptr(r1, 16)));
-  if (regs != 0) {
+  if (regs != 0 || fprs != 0) {
     ASMJIT_PROPAGATE(mfcr(r11));
     ASMJIT_PROPAGATE(stw(r11, ppc::ptr(r1, 8)));
     for (uint32_t k = 0; k < 18; k++) {
+      if (fprs & (1u << k)) {
+        ASMJIT_PROPAGATE(stfd(Fp { uint32_t(14 + k) }, ppc::ptr(r1, int32_t(-8 * (18 - k)))));
+      }
+    }
+    for (uint32_t k = 0; k < 18; k++) {
       if (regs & (1u << k)) {
-        ASMJIT_PROPAGATE(std(Gp { uint32_t(14 + k) }, ppc::ptr(r1, int32_t(-8 * (18 - k)))));
+        ASMJIT_PROPAGATE(std(Gp { uint32_t(14 + k) }, ppc::ptr(r1, int32_t(-fp_bytes - 8 * (18 - k)))));
       }
     }
   }
@@ -1390,20 +1789,30 @@ Error Assembler::prolog(int32_t frame_size, uint32_t save_mask) {
   return stdux(r1, ppc::ptr(r1, r0));
 }
 
-Error Assembler::epilog(int32_t frame_size, uint32_t save_mask) {
+Error Assembler::epilog(int32_t frame_size, uint32_t save_mask, uint32_t fpr_mask) {
   if (ASMJIT_UNLIKELY(!_code)) {
     return report_error(make_error(Error::kNotInitialized));
   }
 
   const uint32_t regs = save_mask & 0x3FFFFu; // Bits 0..17 select r14..r31.
+  const uint32_t fprs = fpr_mask & 0x3FFFFu;  // Bits 0..17 select f14..f31.
   int32_t required = minimum_frame_size();
+  int32_t fp_bytes = 0;
+  if (fprs != 0) {
+    const uint32_t lowest = fprs & (~fprs + 1u);
+    const uint32_t k_min = Support::popcnt(lowest - 1u);
+    fp_bytes = int32_t(8 * (18 - k_min));
+  }
   if (regs != 0) {
     const uint32_t lowest = regs & (~regs + 1u);
     const uint32_t k_min = Support::popcnt(lowest - 1u);
-    required = 32 + int32_t(8 * (18 - k_min));
-    if (required < minimum_frame_size())
-      required = minimum_frame_size();
+    required = 32 + fp_bytes + int32_t(8 * (18 - k_min));
   }
+  else if (fprs != 0) {
+    required = 32 + fp_bytes;
+  }
+  if (required < minimum_frame_size())
+    required = minimum_frame_size();
   if (ASMJIT_UNLIKELY(frame_size < minimum_frame_size() || (frame_size & 15) != 0 ||
                       frame_size < required)) {
     return report_error(make_error(Error::kInvalidArgument));
@@ -1418,10 +1827,15 @@ Error Assembler::epilog(int32_t frame_size, uint32_t save_mask) {
     ASMJIT_PROPAGATE(ld(r1, ppc::ptr(r1, 0)));
   }
 
-  if (regs != 0) {
+  if (regs != 0 || fprs != 0) {
     for (uint32_t k = 18; k-- > 0;) {
       if (regs & (1u << k)) {
-        ASMJIT_PROPAGATE(ld(Gp { uint32_t(14 + k) }, ppc::ptr(r1, int32_t(-8 * (18 - k)))));
+        ASMJIT_PROPAGATE(ld(Gp { uint32_t(14 + k) }, ppc::ptr(r1, int32_t(-fp_bytes - 8 * (18 - k)))));
+      }
+    }
+    for (uint32_t k = 18; k-- > 0;) {
+      if (fprs & (1u << k)) {
+        ASMJIT_PROPAGATE(lfd(Fp { uint32_t(14 + k) }, ppc::ptr(r1, int32_t(-8 * (18 - k)))));
       }
     }
     ASMJIT_PROPAGATE(lwz(r11, ppc::ptr(r1, 8)));
