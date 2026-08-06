@@ -405,6 +405,27 @@ public:
   ASMJIT_API Error mtctr(Gp rs);
   //! `bctrl` (branch to CTR and link).
   ASMJIT_API Error bctrl();
+  //! Calls the function at the given absolute address: materializes it in r12
+  //! (1-5 instructions depending on the value) and emits `mtctr r12; bctrl`.
+  //! The caller's r2 is not preserved; use `callDescriptor()` for ELFv1.
+  ASMJIT_API Error call(uint64_t address);
+  //! Calls an ELFv1 function descriptor: loads the entry and TOC pointers from
+  //! the descriptor at `ptr` (`ld r12,0(r11); ld r2,8(r11); mtctr r12; bctrl`).
+  ASMJIT_API Error callDescriptor(uint64_t ptr);
+  //! PC-relative helper call: `addpcis r12,0; ld r12,disp(r12); mtctr r12;
+  //! bctrl` followed by an 8-byte inline slot holding `address` in the target
+  //! endianness. The slot is 8-byte aligned, so the sequence is self-contained
+  //! and needs no external relocations.
+  ASMJIT_API Error callHelper(uint64_t address);
+  //! Tail call: materializes `address` in r12 and emits `mtctr r12; bctr`.
+  ASMJIT_API Error tailCall(uint64_t address);
+  //! ELFv1 tail call through a function descriptor: `ld r12,0(r11);
+  //! ld r2,8(r11); mtctr r12; bctr`.
+  ASMJIT_API Error tailCallDescriptor(uint64_t ptr);
+  //! Long branch: PC-relative tail branch to any 64-bit address, using the
+  //! same self-contained inline-slot sequence as `callHelper` (`addpcis r12,0;
+  //! ld r12,disp(r12); mtctr r12; bctr` plus an 8-byte slot after the branch).
+  ASMJIT_API Error bLong(uint64_t address);
   //! `bctr` (branch to CTR, no link).
   ASMJIT_API Error bctr();
   //! `mflr rt`.
@@ -726,16 +747,29 @@ public:
   //! \name Function Prologue & Epilogue
   //! \{
 
+  //! Aligns the current section: pads `kCode`/`kData` with no-ops and `kZero`
+  //! with zero bytes up to a power-of-two `alignment` (at least 4 bytes).
+  ASMJIT_API Error align(AlignMode align_mode, uint32_t alignment) override;
+
   //! Minimum stack frame size for the target ABI.
   [[nodiscard]]
   ASMJIT_INLINE_NODEBUG int32_t minimum_frame_size() const noexcept {
     return environment().is_little_endian() ? 32 : 48;
   }
 
-  //! Saves LR and allocates `frame_size` bytes with an atomic back-chain update.
-  ASMJIT_API Error prolog(int32_t frame_size);
-  //! Deallocates the frame, restores LR, and returns.
-  ASMJIT_API Error epilog(int32_t frame_size);
+  //! Saves LR, allocates `frame_size` bytes with an atomic back-chain update,
+  //! and returns. When `save_mask` is nonzero the nonvolatile CR fields and
+  //! the selected GPRs are saved exactly like GCC: LR at 16(caller SP), CR
+  //! (word) at 8(caller SP), and r14+k at -(144 - 8*k)(caller SP), which puts
+  //! the GPR save area at the top of the allocated frame.
+  //!
+  //! Mask bit `k` (k = 0..17) selects GPR r14+k. `frame_size` must be a
+  //! multiple of 16 and cover the highest saved slot plus the 32-byte fixed
+  //! area (e.g. 176 bytes when r14 is saved, 40 bytes when only r31 is).
+  //! Frames larger than 32 KiB use a multi-instruction allocation.
+  ASMJIT_API Error prolog(int32_t frame_size, uint32_t save_mask = 0);
+  //! Deallocates the frame, restores what `prolog()` saved, and returns.
+  ASMJIT_API Error epilog(int32_t frame_size, uint32_t save_mask = 0);
 
   //! \}
 

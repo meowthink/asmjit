@@ -138,6 +138,28 @@ Error Assembler::sldi(Gp ra, Gp rs, uint8_t sh) {
 }
 
 Error Assembler::loadImm64(Gp rt, uint64_t imm) {
+  // Fast paths keep common constants to one or two instructions
+  // (Book II 2.1.2: 32-bit constants in oris/ori or addis/addi).
+  if (imm <= 0x7FFFu || imm >= 0xFFFFFFFFFFFF8000ull) {
+    return li(rt, int16_t(imm)); // sign-extended 16-bit constant
+  }
+  if (imm <= 0xFFFFFFFFull) {
+    if (imm <= 0x7FFFFFFFull) {
+      // lis+ori keeps the top bit clear, so the value is zero-extended.
+      ASMJIT_PROPAGATE(addis(rt, r0, int16_t(uint32_t(imm) >> 16)));
+      return ori(rt, rt, uint16_t(imm));
+    }
+    // Top bit set: build from zero with oris+ori (r0 is a real register in
+    // logical ops, so it cannot be used as an implicit zero here).
+    ASMJIT_PROPAGATE(li(rt, 0));
+    ASMJIT_PROPAGATE(oris(rt, rt, uint16_t(imm >> 16)));
+    return ori(rt, rt, uint16_t(imm));
+  }
+  if (imm >= 0xFFFFFFFF80000000ull) {
+    ASMJIT_PROPAGATE(addis(rt, r0, int16_t(uint32_t(imm) >> 16)));
+    return addi(rt, rt, int16_t(uint32_t(imm))); // sign-extended 32-bit constant
+  }
+  // General 64-bit constant.
   ASMJIT_PROPAGATE(addis(rt, r0, int16_t(imm >> 48)));
   ASMJIT_PROPAGATE(ori(rt, rt, uint16_t(imm >> 32)));
   ASMJIT_PROPAGATE(sldi(rt, rt, 32));
@@ -562,6 +584,101 @@ Error Assembler::mtctr(Gp rs) {
 
 Error Assembler::bctrl() {
   return emit32((19u << 26) | (20u << 21) | (528u << 1) | 1u);
+}
+
+Error Assembler::call(uint64_t address) {
+  ASMJIT_PROPAGATE(loadImm64(r12, address));
+  ASMJIT_PROPAGATE(mtctr(r12));
+  return bctrl();
+}
+
+Error Assembler::callDescriptor(uint64_t ptr) {
+  ASMJIT_PROPAGATE(loadImm64(r11, ptr));
+  ASMJIT_PROPAGATE(ld(r12, ppc::ptr(r11, 0)));
+  ASMJIT_PROPAGATE(ld(r2, ppc::ptr(r11, 8)));
+  ASMJIT_PROPAGATE(mtctr(r12));
+  return bctrl();
+}
+
+Error Assembler::callHelper(uint64_t address) {
+  if (ASMJIT_UNLIKELY(!_code)) {
+    return report_error(make_error(Error::kNotInitialized));
+  }
+
+  // addpcis r12, 0 sets r12 to the address of the following instruction; the
+  // inline slot below is reached with a small displacement regardless of where
+  // the code is placed, and a branch skips over the data after the call.
+  ASMJIT_PROPAGATE(addpcis(r12, 0));
+  const size_t nia = offset();                           // NIA = address after the addpcis.
+  const size_t slot_off = (nia + 16 + 7) & ~size_t(7);   // After ld+mtctr+bctrl+b, 8-aligned.
+  const int64_t disp = int64_t(slot_off) - int64_t(nia);
+  if (ASMJIT_UNLIKELY(disp < -32768 || disp > 32767)) {
+    return report_error(make_error(Error::kTooLarge));
+  }
+  Label skip = new_label();
+  ASMJIT_PROPAGATE(ld(r12, ppc::ptr(r12, int32_t(disp))));
+  ASMJIT_PROPAGATE(mtctr(r12));
+  ASMJIT_PROPAGATE(bctrl());
+  ASMJIT_PROPAGATE(b(skip));
+  while (offset() < slot_off) {
+    ASMJIT_PROPAGATE(nop());
+  }
+
+  uint8_t bytes[8];
+  if (environment().is_little_endian()) {
+    Support::storeu_u64_le(bytes, address);
+  }
+  else {
+    Support::storeu_u64_be(bytes, address);
+  }
+  ASMJIT_PROPAGATE(embed(bytes, 8));
+  return bind(skip);
+}
+
+Error Assembler::tailCall(uint64_t address) {
+  ASMJIT_PROPAGATE(loadImm64(r12, address));
+  ASMJIT_PROPAGATE(mtctr(r12));
+  return bctr();
+}
+
+Error Assembler::tailCallDescriptor(uint64_t ptr) {
+  ASMJIT_PROPAGATE(loadImm64(r11, ptr));
+  ASMJIT_PROPAGATE(ld(r12, ppc::ptr(r11, 0)));
+  ASMJIT_PROPAGATE(ld(r2, ppc::ptr(r11, 8)));
+  ASMJIT_PROPAGATE(mtctr(r12));
+  return bctr();
+}
+
+Error Assembler::bLong(uint64_t address) {
+  if (ASMJIT_UNLIKELY(!_code)) {
+    return report_error(make_error(Error::kNotInitialized));
+  }
+
+  // addpcis r12, 0; ld r12, disp(r12); mtctr r12; bctr -- tail branch to an
+  // absolute 64-bit address loaded from an inline slot right after the branch
+  // (the same self-contained trick as callHelper, no external relocations).
+  ASMJIT_PROPAGATE(addpcis(r12, 0));
+  const size_t nia = offset();                             // NIA = address after the addpcis.
+  const size_t slot_off = (nia + 12 + 7) & ~size_t(7);     // After ld+mtctr+bctr, 8-aligned.
+  const int64_t disp = int64_t(slot_off) - int64_t(nia);
+  if (ASMJIT_UNLIKELY(disp < -32768 || disp > 32767)) {
+    return report_error(make_error(Error::kTooLarge));
+  }
+  ASMJIT_PROPAGATE(ld(r12, ppc::ptr(r12, int32_t(disp))));
+  ASMJIT_PROPAGATE(mtctr(r12));
+  ASMJIT_PROPAGATE(bctr());
+  while (offset() < slot_off) {
+    ASMJIT_PROPAGATE(nop());
+  }
+
+  uint8_t bytes[8];
+  if (environment().is_little_endian()) {
+    Support::storeu_u64_le(bytes, address);
+  }
+  else {
+    Support::storeu_u64_be(bytes, address);
+  }
+  return embed(bytes, 8);
 }
 
 Error Assembler::bctr() {
@@ -1201,30 +1318,116 @@ Error Assembler::cdtbcd(Gp ra, Gp rs) {
   return emitXRs(282u, ra, rs, false);
 }
 
-Error Assembler::prolog(int32_t frame_size) {
+Error Assembler::align(AlignMode align_mode, uint32_t alignment) {
   if (ASMJIT_UNLIKELY(!_code)) {
     return report_error(make_error(Error::kNotInitialized));
   }
-  // DS-form stdu displacement is a 14-bit signed field shifted left by 2,
-  // so a single instruction covers frames smaller than 32 KiB.
-  if (ASMJIT_UNLIKELY(frame_size < minimum_frame_size() || (frame_size & 15) != 0 || frame_size > 32764)) {
+  if (ASMJIT_UNLIKELY(alignment < 4 || (alignment & (alignment - 1)) != 0)) {
     return report_error(make_error(Error::kInvalidArgument));
   }
 
-  ASMJIT_PROPAGATE(mflr(r0));
-  ASMJIT_PROPAGATE(std(r0, ppc::ptr(r1, 16)));
-  return stdu(r1, ppc::ptr(r1, int32_t(-frame_size)));
+  const size_t aligned = (offset() + alignment - 1) & ~size_t(alignment - 1);
+  while (offset() < aligned) {
+    if (align_mode == AlignMode::kZero) {
+      const uint8_t zeros[4] = { 0, 0, 0, 0 };
+      ASMJIT_PROPAGATE(embed(zeros, 4));
+    }
+    else {
+      ASMJIT_PROPAGATE(nop());
+    }
+  }
+  return Error::kOk;
 }
 
-Error Assembler::epilog(int32_t frame_size) {
+Error Assembler::prolog(int32_t frame_size, uint32_t save_mask) {
   if (ASMJIT_UNLIKELY(!_code)) {
     return report_error(make_error(Error::kNotInitialized));
   }
-  if (ASMJIT_UNLIKELY(frame_size < minimum_frame_size() || (frame_size & 15) != 0 || frame_size > 32764)) {
+
+  const uint32_t regs = save_mask & 0x3FFFFu; // Bits 0..17 select r14..r31.
+  // ABI-fixed slots: r14+k is saved at -(144 - 8*k) relative to the caller's
+  // SP, so the frame must cover the highest saved slot plus the 32-byte fixed
+  // area at its bottom.
+  int32_t required = minimum_frame_size();
+  if (regs != 0) {
+    const uint32_t lowest = regs & (~regs + 1u); // Lowest set bit (highest register).
+    const uint32_t k_min = Support::popcnt(lowest - 1u);
+    required = 32 + int32_t(8 * (18 - k_min));
+    if (required < minimum_frame_size())
+      required = minimum_frame_size();
+  }
+  if (ASMJIT_UNLIKELY(frame_size < minimum_frame_size() || (frame_size & 15) != 0 ||
+                      frame_size < required)) {
     return report_error(make_error(Error::kInvalidArgument));
   }
 
-  ASMJIT_PROPAGATE(addi(r1, r1, int16_t(frame_size)));
+  // Save LR and CR in the caller's fixed area and nonvolatile GPRs at the top
+  // of our own frame, exactly like GCC.
+  ASMJIT_PROPAGATE(mflr(r0));
+  ASMJIT_PROPAGATE(std(r0, ppc::ptr(r1, 16)));
+  if (regs != 0) {
+    ASMJIT_PROPAGATE(mfcr(r11));
+    ASMJIT_PROPAGATE(stw(r11, ppc::ptr(r1, 8)));
+    for (uint32_t k = 0; k < 18; k++) {
+      if (regs & (1u << k)) {
+        ASMJIT_PROPAGATE(std(Gp { uint32_t(14 + k) }, ppc::ptr(r1, int32_t(-8 * (18 - k)))));
+      }
+    }
+  }
+
+  if (frame_size <= 32764) {
+    // DS-form stdu displacement is a 14-bit signed field shifted left by 2,
+    // so a single instruction covers frames smaller than 32 KiB.
+    return stdu(r1, ppc::ptr(r1, int32_t(-frame_size)));
+  }
+
+  // Large frames: a frame size fits in 32 bits, so the negative size is two
+  // instructions (addis+ori), and an indexed store-with-update writes the back
+  // chain once at the final frame (same sequence as GCC).
+  const uint32_t neg = 0u - uint32_t(frame_size);
+  ASMJIT_PROPAGATE(addis(r0, r0, int16_t(neg >> 16)));
+  ASMJIT_PROPAGATE(ori(r0, r0, uint16_t(neg)));
+  return stdux(r1, ppc::ptr(r1, r0));
+}
+
+Error Assembler::epilog(int32_t frame_size, uint32_t save_mask) {
+  if (ASMJIT_UNLIKELY(!_code)) {
+    return report_error(make_error(Error::kNotInitialized));
+  }
+
+  const uint32_t regs = save_mask & 0x3FFFFu; // Bits 0..17 select r14..r31.
+  int32_t required = minimum_frame_size();
+  if (regs != 0) {
+    const uint32_t lowest = regs & (~regs + 1u);
+    const uint32_t k_min = Support::popcnt(lowest - 1u);
+    required = 32 + int32_t(8 * (18 - k_min));
+    if (required < minimum_frame_size())
+      required = minimum_frame_size();
+  }
+  if (ASMJIT_UNLIKELY(frame_size < minimum_frame_size() || (frame_size & 15) != 0 ||
+                      frame_size < required)) {
+    return report_error(make_error(Error::kInvalidArgument));
+  }
+
+  if (frame_size <= 32764) {
+    ASMJIT_PROPAGATE(addi(r1, r1, int16_t(frame_size)));
+  }
+  else {
+    // The back chain written by the prolog points at the caller's SP, so the
+    // whole frame is released with a single load (same as GCC).
+    ASMJIT_PROPAGATE(ld(r1, ppc::ptr(r1, 0)));
+  }
+
+  if (regs != 0) {
+    for (uint32_t k = 18; k-- > 0;) {
+      if (regs & (1u << k)) {
+        ASMJIT_PROPAGATE(ld(Gp { uint32_t(14 + k) }, ppc::ptr(r1, int32_t(-8 * (18 - k)))));
+      }
+    }
+    ASMJIT_PROPAGATE(lwz(r11, ppc::ptr(r1, 8)));
+    ASMJIT_PROPAGATE(mtcrf(0x38, r11)); // Restore nonvolatile CR fields CR2..CR4.
+  }
+
   ASMJIT_PROPAGATE(ld(r0, ppc::ptr(r1, 16)));
   ASMJIT_PROPAGATE(mtlr(r0));
   return blr();

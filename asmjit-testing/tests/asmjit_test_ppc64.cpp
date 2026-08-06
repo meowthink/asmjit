@@ -123,6 +123,132 @@ static bool testPrologEpilog() {
   return checkWords(code, expected, 7);
 }
 
+static bool testPrologLarge() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.prolog(40000);
+  a.epilog(40000);
+
+  const uint32_t expected[] = {
+    0x7C0802A6u, // mflr r0
+    0xF8010010u, // std r0, 16(r1)
+    0x3C00FFFFu, // addis r0, r0, -1
+    0x600063C0u, // ori r0, r0, 0x63C0
+    0x7C21016Au, // stdux r1, r1, r0
+    0xE8210000u, // ld r1, 0(r1)
+    0xE8010010u, // ld r0, 16(r1)
+    0x7C0803A6u, // mtlr r0
+    0x4E800020u  // blr
+  };
+  return checkWords(code, expected, 9);
+}
+
+static bool testPrologSaves() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.prolog(176, 0x7); // save r14, r15, r16 (ABI slots need a 176-byte frame)
+  a.epilog(176, 0x7);
+
+  const uint32_t expected[] = {
+    0x7C0802A6u, // mflr r0
+    0xF8010010u, // std r0, 16(r1)
+    0x7D600026u, // mfcr r11
+    0x91610008u, // stw r11, 8(r1)
+    0xF9C1FF70u, // std r14, -144(r1)
+    0xF9E1FF78u, // std r15, -136(r1)
+    0xFA01FF80u, // std r16, -128(r1)
+    0xF821FF51u, // stdu r1, -176(r1)
+    0x382100B0u, // addi r1, r1, 176
+    0xEA01FF80u, // ld r16, -128(r1)
+    0xE9E1FF78u, // ld r15, -136(r1)
+    0xE9C1FF70u, // ld r14, -144(r1)
+    0x81610008u, // lwz r11, 8(r1)
+    0x7D638120u, // mtcrf 0x38, r11
+    0xE8010010u, // ld r0, 16(r1)
+    0x7C0803A6u, // mtlr r0
+    0x4E800020u  // blr
+  };
+  return checkWords(code, expected, 17);
+}
+
+static bool testPrologLargeSaves() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.prolog(40000, 0x7);
+  a.epilog(40000, 0x7);
+
+  const uint32_t expected[] = {
+    0x7C0802A6u, 0xF8010010u, 0x7D600026u, 0x91610008u,
+    0xF9C1FF70u, 0xF9E1FF78u, 0xFA01FF80u,
+    0x3C00FFFFu, 0x600063C0u,
+    0x7C21016Au,
+    0xE8210000u,
+    0xEA01FF80u, 0xE9E1FF78u, 0xE9C1FF70u,
+    0x81610008u, 0x7D638120u,
+    0xE8010010u, 0x7C0803A6u, 0x4E800020u
+  };
+  return checkWords(code, expected, 19);
+}
+
+static bool testPrologValidation() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  if (a.prolog(31) != Error::kInvalidArgument) {
+    return false; // below the minimum frame size
+  }
+
+  CodeHolder code2;
+  if (code2.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                             Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler b(&code2);
+  if (b.prolog(160, 0x7) != Error::kInvalidArgument) {
+    return false; // 18 saved GPRs require 176 bytes
+  }
+
+  CodeHolder code3;
+  if (code3.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                             Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler c(&code3);
+  if (c.prolog(48, 0x20000) != Error::kOk) { // r31 only needs 40 bytes (16-aligned)
+    return false;
+  }
+
+  CodeHolder code4;
+  if (code4.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                             Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler d(&code4);
+  return d.prolog(40000, 0x3FFFF) == Error::kOk && d.epilog(40000, 0x3FFFF) == Error::kOk;
+}
+
 static bool testCallConv(Arch arch) {
   Environment env(arch, SubArch::kUnknown, Vendor::kUnknown,
                   Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT);
@@ -248,6 +374,58 @@ static bool testLoadImm64() {
     0x6063DEF0u  // ori r3, r3, 0xDEF0
   };
   return checkWords(code, expected, 5);
+}
+
+static bool testLoadImm64Fast() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.loadImm64(ppc::r3, 0x1234);
+  a.loadImm64(ppc::r4, 0x12345678);
+  a.loadImm64(ppc::r7, 0x80001234);
+  a.loadImm64(ppc::r5, 0xFFFFFFFF80001234ull);
+  a.loadImm64(ppc::r6, 0xFFFFFFFFFFFFFFFFull);
+
+  const uint32_t expected[] = {
+    0x38601234u, // li r3, 0x1234
+    0x3C801234u, // lis r4, 0x1234
+    0x60845678u, // ori r4, r4, 0x5678
+    0x38E00000u, // li r7, 0
+    0x64E78000u, // oris r7, r7, 0x8000
+    0x60E71234u, // ori r7, r7, 0x1234
+    0x3CA08000u, // addis r5, r0, 0x8000
+    0x38A51234u, // addi r5, r5, 0x1234
+    0x38C0FFFFu  // li r6, -1
+  };
+  return checkWords(code, expected, 9);
+}
+
+static bool testCallHelpers() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.call(0x1234);
+  a.callDescriptor(0x1000);
+
+  const uint32_t expected[] = {
+    0x39801234u, // li r12, 0x1234
+    0x7D8903A6u, // mtctr r12
+    0x4E800421u, // bctrl
+    0x39601000u, // li r11, 0x1000
+    0xE98B0000u, // ld r12, 0(r11)
+    0xE84B0008u, // ld r2, 8(r11)
+    0x7D8903A6u, // mtctr r12
+    0x4E800421u  // bctrl
+  };
+  return checkWords(code, expected, 8);
 }
 
 static bool testMemory() {
@@ -838,6 +1016,72 @@ static bool testBranchExt() {
   return checkWords(code, expected, 9);
 }
 
+static bool testAlignEmbed() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.li(ppc::r3, 1);
+  a.align(AlignMode::kCode, 8);
+  const uint8_t bytes[8] = { 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 };
+  a.embed(bytes, 8);
+
+  const uint32_t expected[] = {
+    0x38600001u, // li r3, 1
+    0x60000000u, // 1 no-op to align 4 -> 8
+    0x05060708u, // embedded data, little-endian
+    0x01020304u
+  };
+  return checkWords(code, expected, 4);
+}
+
+static bool testCallHelperGolden() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.callHelper(0x1122334455667788u);
+
+  const uint32_t expected[] = {
+    0x4D800004u, // lnia r12 (addpcis r12, 0)
+    0xE98C0014u, // ld r12, 20(r12)
+    0x7D8903A6u, // mtctr r12
+    0x4E800421u, // bctrl
+    0x48000010u, // b +16 (skip the inline slot)
+    0x60000000u, // padding no-op
+    0x55667788u, // inline slot, little-endian
+    0x11223344u
+  };
+  return checkWords(code, expected, 8);
+}
+
+static bool testBLongGolden() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.bLong(0x1122334455667788u);
+
+  const uint32_t expected[] = {
+    0x4D800004u, // lnia r12 (addpcis r12, 0)
+    0xE98C000Cu, // ld r12, 12(r12)
+    0x7D8903A6u, // mtctr r12
+    0x4E800420u, // bctr
+    0x55667788u, // inline slot, little-endian
+    0x11223344u
+  };
+  return checkWords(code, expected, 6);
+}
+
 #if ASMJIT_ARCH_PPC == 64
 extern "C" uint64_t ppcTestGccHelper(uint64_t a, uint64_t b) {
   return a * 3 + b;
@@ -886,20 +1130,10 @@ static bool testExecutionGccHelper() {
   a.prolog(frame_size);
 
 #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-  const ppc::FunctionDescriptor* helper =
-    (const ppc::FunctionDescriptor*)func_as_ptr(&ppcTestGccHelper);
-  const uint64_t helper_entry = (uint64_t)helper->entry;
-  const uint64_t helper_toc = (uint64_t)helper->toc;
+  a.callDescriptor((uint64_t)func_as_ptr(&ppcTestGccHelper));
 #else
-  const uint64_t helper_entry = (uint64_t)func_as_ptr(&ppcTestGccHelper);
-  const uint64_t helper_toc = 0;
+  a.call((uint64_t)func_as_ptr(&ppcTestGccHelper));
 #endif
-
-  a.loadImm64(ppc::r12, helper_entry);
-  if (helper_toc)
-    a.loadImm64(ppc::r2, helper_toc);
-  a.mtctr(ppc::r12);
-  a.bctrl();
   a.epilog(frame_size);
 
   Fn fn = nullptr;
@@ -991,6 +1225,177 @@ static bool testExecutionStep5() {
 
   return fn(argA, argB) == expected;
 }
+
+static bool testExecutionLargeFrame() {
+  using Fn = uint64_t (*)(uint64_t);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = 40000; // > 32 KiB
+  a.prolog(frame_size);
+
+  // Touch storage deep inside the frame, beyond the single-instruction range.
+  a.loadImm64(ppc::r9, 32784);
+  a.add(ppc::r9, ppc::r1, ppc::r9);
+  a.std(ppc::r3, ppc::ptr(ppc::r9, 0));
+  a.ld(ppc::r3, ppc::ptr(ppc::r9, 0));
+  a.li(ppc::r4, 5);
+  a.add(ppc::r3, ppc::r3, ppc::r4);
+
+  a.epilog(frame_size);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  return fn(37) == 42;
+}
+
+static bool testExecutionNonvolatile() {
+  using Fn = uint64_t (*)(uint64_t, uint64_t);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = 176; // enough for the ABI-fixed r14..r16 slots
+  a.prolog(frame_size, 0x7); // save r14, r15, r16 and CR
+
+  a.li(ppc::r14, 0x1234);
+  a.li(ppc::r15, 0x5678);
+  a.li(ppc::r16, 0x2ABC); // keep < 0x8000: `li` sign-extends
+
+  // Clobber the whole CR so a broken save/restore would corrupt the caller.
+  a.loadImm64(ppc::r12, 0x0102030405060708u);
+  a.mtcrf(0xFF, ppc::r12);
+
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+  a.callDescriptor((uint64_t)func_as_ptr(&ppcTestGccHelper));
+#else
+  a.call((uint64_t)func_as_ptr(&ppcTestGccHelper));
+#endif
+
+  a.add(ppc::r3, ppc::r3, ppc::r14);
+  a.add(ppc::r3, ppc::r3, ppc::r15);
+  a.add(ppc::r3, ppc::r3, ppc::r16);
+
+  a.epilog(frame_size, 0x7);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  const uint64_t argA = 5;
+  const uint64_t argB = 7;
+  const uint64_t keep = argA * 1009; // kept live across the call in a callee-saved reg
+  const uint64_t r = fn(argA, argB);
+  const uint64_t expected = 22 + 0x1234 + 0x5678 + 0x2ABC;
+  return keep * 7 + r == keep * 7 + expected;
+}
+static bool testExecutionCallHelper() {
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+  return true; // ELFv1 calls are exercised through callDescriptor() elsewhere.
+#else
+  using Fn = uint64_t (*)(uint64_t, uint64_t);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = a.minimum_frame_size();
+  a.prolog(frame_size);
+  a.callHelper((uint64_t)func_as_ptr(&ppcTestGccHelper));
+  a.epilog(frame_size);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  return fn(5, 7) == 22;
+#endif
+}
+
+static bool testExecutionTailCall() {
+  using Fn = uint64_t (*)(uint64_t, uint64_t);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+  a.tailCallDescriptor((uint64_t)func_as_ptr(&ppcTestGccHelper));
+#else
+  a.tailCall((uint64_t)func_as_ptr(&ppcTestGccHelper));
+#endif
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  return fn(5, 7) == 22;
+}
+
+static bool testExecutionBLong() {
+  using Fn = uint64_t (*)(uint64_t);
+
+  ppc::Runtime rt;
+  CodeHolder codeB;
+  if (codeB.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler b(&codeB);
+  b.addi(ppc::r3, ppc::r3, 100);
+  b.blr();
+
+  Fn fnB = nullptr;
+  if (rt.add(&fnB, &codeB) != Error::kOk) {
+    return false;
+  }
+
+  // ELFv1 (BE) descriptors store the raw entry in word 0; on LE the function
+  // pointer is the code address itself. The tail branch preserves LR, so the
+  // simple helper below returns straight to the test caller.
+  const uint64_t target =
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+    *reinterpret_cast<const uint64_t*>(func_as_ptr(fnB));
+#else
+    (uint64_t)(uintptr_t)func_as_ptr(fnB);
+#endif
+
+  CodeHolder codeA;
+  if (codeA.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&codeA);
+  a.bLong(target);
+
+  Fn fnA = nullptr;
+  if (rt.add(&fnA, &codeA) != Error::kOk) {
+    return false;
+  }
+
+  return fnA(5) == 105;
+}
 #endif
 
 int main() {
@@ -999,6 +1404,10 @@ int main() {
   ok &= testBigEndian();
   ok &= testBigEndianBranches();
   ok &= testPrologEpilog();
+  ok &= testPrologLarge();
+  ok &= testPrologSaves();
+  ok &= testPrologLargeSaves();
+  ok &= testPrologValidation();
   ok &= testCallConv(Arch::kPPC64_LE);
   ok &= testCallConv(Arch::kPPC64_BE);
   ok &= testFuncDetail(Arch::kPPC64_LE);
@@ -1006,6 +1415,8 @@ int main() {
   ok &= testBranches();
   ok &= testBackwardBranch();
   ok &= testLoadImm64();
+  ok &= testLoadImm64Fast();
+  ok &= testCallHelpers();
   ok &= testMemory();
   ok &= testMemoryExt();
   ok &= testLlSc();
@@ -1019,10 +1430,18 @@ int main() {
   ok &= testLogicalShiftExt();
   ok &= testSystemRegsAndCr();
   ok &= testBranchExt();
+  ok &= testAlignEmbed();
+  ok &= testCallHelperGolden();
+  ok &= testBLongGolden();
 #if ASMJIT_ARCH_PPC == 64
   ok &= testExecution();
   ok &= testExecutionGccHelper();
   ok &= testExecutionStep5();
+  ok &= testExecutionLargeFrame();
+  ok &= testExecutionNonvolatile();
+  ok &= testExecutionCallHelper();
+  ok &= testExecutionTailCall();
+  ok &= testExecutionBLong();
 #endif
 
   if (!ok) {
