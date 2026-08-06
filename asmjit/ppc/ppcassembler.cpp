@@ -261,6 +261,12 @@ Error Assembler::std(Gp rs, const Mem& m) {
   return emit32((62u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
 }
 
+Error Assembler::stdu(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 3u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((62u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())) | 1u);
+}
+
 Error Assembler::lwz(Gp rt, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
     return report_error(make_error(Error::kInvalidAddress));
@@ -295,6 +301,35 @@ Error Assembler::sth(Gp rs, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
     return report_error(make_error(Error::kInvalidAddress));
   return emit32((44u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
+}
+
+Error Assembler::prolog(int32_t frame_size) {
+  if (ASMJIT_UNLIKELY(!_code)) {
+    return report_error(make_error(Error::kNotInitialized));
+  }
+  // DS-form stdu displacement is a 14-bit signed field shifted left by 2,
+  // so a single instruction covers frames smaller than 32 KiB.
+  if (ASMJIT_UNLIKELY(frame_size < minimum_frame_size() || (frame_size & 15) != 0 || frame_size > 32764)) {
+    return report_error(make_error(Error::kInvalidArgument));
+  }
+
+  ASMJIT_PROPAGATE(mflr(r0));
+  ASMJIT_PROPAGATE(std(r0, ppc::ptr(r1, 16)));
+  return stdu(r1, ppc::ptr(r1, int32_t(-frame_size)));
+}
+
+Error Assembler::epilog(int32_t frame_size) {
+  if (ASMJIT_UNLIKELY(!_code)) {
+    return report_error(make_error(Error::kNotInitialized));
+  }
+  if (ASMJIT_UNLIKELY(frame_size < minimum_frame_size() || (frame_size & 15) != 0 || frame_size > 32764)) {
+    return report_error(make_error(Error::kInvalidArgument));
+  }
+
+  ASMJIT_PROPAGATE(addi(r1, r1, int16_t(frame_size)));
+  ASMJIT_PROPAGATE(ld(r0, ppc::ptr(r1, 16)));
+  ASMJIT_PROPAGATE(mtlr(r0));
+  return blr();
 }
 
 Error Assembler::emitBranch(int bo, int bi, const Label& label) {

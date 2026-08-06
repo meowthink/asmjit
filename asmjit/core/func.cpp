@@ -18,6 +18,10 @@
   #include <asmjit/arm/a64func_p.h>
 #endif
 
+#if !defined(ASMJIT_NO_PPC)
+  #include <asmjit/ppc/ppcfunc_p.h>
+#endif
+
 ASMJIT_BEGIN_NAMESPACE
 
 // CallConv - Initialization & Reset
@@ -35,6 +39,12 @@ ASMJIT_FAVOR_SIZE Error CallConv::init(CallConvId call_conv_id, const Environmen
 #if !defined(ASMJIT_NO_AARCH64)
   if (environment.is_family_aarch64()) {
     return a64::FuncInternal::init_call_conv(*this, call_conv_id, environment);
+  }
+#endif
+
+#if !defined(ASMJIT_NO_PPC)
+  if (environment.is_family_ppc()) {
+    return ppc::FuncInternal::init_call_conv(*this, call_conv_id, environment);
   }
 #endif
 
@@ -81,6 +91,12 @@ ASMJIT_FAVOR_SIZE Error FuncDetail::init(const FuncSignature& signature, const E
 #if !defined(ASMJIT_NO_AARCH64)
   if (environment.is_family_aarch64()) {
     return a64::FuncInternal::init_func_detail(*this, signature);
+  }
+#endif
+
+#if !defined(ASMJIT_NO_PPC)
+  if (environment.is_family_ppc()) {
+    return ppc::FuncInternal::init_func_detail(*this, signature);
   }
 #endif
 

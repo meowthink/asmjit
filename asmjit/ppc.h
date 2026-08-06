@@ -10,6 +10,7 @@
 
 #if !defined(ASMJIT_NO_PPC)
   #include <asmjit/ppc/ppcassembler.h>
+  #include <asmjit/ppc/ppcruntime.h>
 #endif
 
 #endif // ASMJIT_PPC_H_INCLUDED

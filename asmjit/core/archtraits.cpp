@@ -16,6 +16,10 @@
   #include <asmjit/arm/a64archtraits_p.h>
 #endif
 
+#if !defined(ASMJIT_NO_PPC)
+  #include <asmjit/ppc/ppcarchtraits_p.h>
+#endif
+
 ASMJIT_BEGIN_NAMESPACE
 
 static const constexpr ArchTraits no_arch_traits = {
@@ -89,13 +93,32 @@ ASMJIT_VARAPI const ArchTraits _arch_traits[uint32_t(Arch::kMaxValue) + 1] = {
   // Reserved.
   no_arch_traits,
 
-  // MIPS32/MIPS64
+  // MIPS in (little endian)
+  no_arch_traits,
+  no_arch_traits,
+
+  // ARM in (big-endian).
+  no_arch_traits,
+  no_arch_traits,
+  no_arch_traits,
+  no_arch_traits,
+
+  // MIPS in (big-endian).
   no_arch_traits,
   no_arch_traits,
 
   // PPC64
+#if !defined(ASMJIT_NO_PPC)
+  no_arch_traits,
+  ppc::ppc64_arch_traits,
+  no_arch_traits,
+  ppc::ppc64_arch_traits
+#else
+  no_arch_traits,
+  no_arch_traits,
   no_arch_traits,
   no_arch_traits
+#endif
 };
 
 ASMJIT_FAVOR_SIZE Error ArchUtils::type_id_to_reg_signature(Arch arch, TypeId type_id, Out<TypeId> type_id_out, Out<OperandSignature> reg_signature_out) noexcept {

@@ -99,6 +99,86 @@ static bool testBigEndianBranches() {
   return checkWords(code, expected, 4);
 }
 
+static bool testPrologEpilog() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.prolog(32);
+  a.epilog(32);
+
+  const uint32_t expected[] = {
+    0x7C0802A6u, // mflr r0
+    0xF8010010u, // std r0, 16(r1)
+    0xF821FFE1u, // stdu r1, -32(r1)
+    0x38210020u, // addi r1, r1, 32
+    0xE8010010u, // ld r0, 16(r1)
+    0x7C0803A6u, // mtlr r0
+    0x4E800020u  // blr
+  };
+  return checkWords(code, expected, 7);
+}
+
+static bool testCallConv(Arch arch) {
+  Environment env(arch, SubArch::kUnknown, Vendor::kUnknown,
+                  Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT);
+  CallConv cc;
+  if (cc.init(CallConvId::kCDecl, env) != Error::kOk) {
+    return false;
+  }
+
+  const uint8_t* order = cc.passed_order(RegGroup::kGp);
+  for (uint32_t i = 0; i < 8; i++) {
+    if (order[i] != i + 3) {
+      std::printf("passed order[%u] = %u, expected %u\n", i, order[i], i + 3);
+      return false;
+    }
+  }
+
+  const RegMask preserved = cc.preserved_regs(RegGroup::kGp);
+  for (uint32_t r = 14; r <= 31; r++) {
+    if (!(preserved & (1u << r))) {
+      std::printf("preserved r%u missing\n", r);
+      return false;
+    }
+  }
+
+  return cc.natural_stack_alignment() == 16;
+}
+
+static bool testFuncDetail(Arch arch) {
+  Environment env(arch, SubArch::kUnknown, Vendor::kUnknown,
+                  Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT);
+
+  FuncSignature signature(CallConvId::kCDecl);
+  signature.set_ret_t<uint64_t>();
+  signature.add_arg_t<uint64_t>();
+  signature.add_arg_t<uint64_t>();
+
+  FuncDetail detail;
+  if (detail.init(signature, env) != Error::kOk) {
+    return false;
+  }
+
+  if (detail._rets[0].reg_id() != 3) {
+    std::printf("ret reg = %u, expected 3\n", detail._rets[0].reg_id());
+    return false;
+  }
+  if (detail._args[0][0].reg_id() != 3) {
+    std::printf("arg0 reg = %u, expected 3\n", detail._args[0][0].reg_id());
+    return false;
+  }
+  if (detail._args[1][0].reg_id() != 4) {
+    std::printf("arg1 reg = %u, expected 4\n", detail._args[1][0].reg_id());
+    return false;
+  }
+
+  return true;
+}
+
 static bool testBranches() {
   CodeHolder code;
   if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
@@ -200,38 +280,75 @@ static bool testMemory() {
 }
 
 #if ASMJIT_ARCH_PPC == 64
+extern "C" uint64_t ppcTestGccHelper(uint64_t a, uint64_t b) {
+  return a * 3 + b;
+}
+
 static bool testExecution() {
   using Fn = uint64_t (*)(uint64_t);
 
-  JitRuntime rt;
+  ppc::Runtime rt;
   CodeHolder code;
   if (code.init(rt.environment()) != Error::kOk) {
     return false;
   }
 
   ppc::Assembler a(&code);
+  const int32_t frame_size = a.minimum_frame_size();
   Label loop = a.new_label();
+  a.prolog(frame_size);
   a.li(ppc::r4, 5);
   a.bind(loop);
   a.addi(ppc::r3, ppc::r3, 1);
   a.addi(ppc::r4, ppc::r4, -1);
   a.cmpdi(ppc::r4, 0);
   a.bne(loop);
-  a.blr();
+  a.epilog(frame_size);
 
   Fn fn = nullptr;
   if (rt.add(&fn, &code) != Error::kOk) {
     return false;
   }
 
+  return fn(37) == 42;
+}
+
+static bool testExecutionGccHelper() {
+  using Fn = uint64_t (*)(uint64_t, uint64_t);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = a.minimum_frame_size();
+  a.prolog(frame_size);
+
 #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-  ppc::FunctionDescriptor descriptor = { func_as_ptr(fn), nullptr, nullptr };
-  Fn callable = (Fn)&descriptor;
+  const ppc::FunctionDescriptor* helper =
+    (const ppc::FunctionDescriptor*)func_as_ptr(&ppcTestGccHelper);
+  const uint64_t helper_entry = (uint64_t)helper->entry;
+  const uint64_t helper_toc = (uint64_t)helper->toc;
 #else
-  Fn callable = fn;
+  const uint64_t helper_entry = (uint64_t)func_as_ptr(&ppcTestGccHelper);
+  const uint64_t helper_toc = 0;
 #endif
 
-  return callable(37) == 42;
+  a.loadImm64(ppc::r12, helper_entry);
+  if (helper_toc)
+    a.loadImm64(ppc::r2, helper_toc);
+  a.mtctr(ppc::r12);
+  a.bctrl();
+  a.epilog(frame_size);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  return fn(5, 7) == 22;
 }
 #endif
 
@@ -240,12 +357,18 @@ int main() {
   ok &= testBasic();
   ok &= testBigEndian();
   ok &= testBigEndianBranches();
+  ok &= testPrologEpilog();
+  ok &= testCallConv(Arch::kPPC64_LE);
+  ok &= testCallConv(Arch::kPPC64_BE);
+  ok &= testFuncDetail(Arch::kPPC64_LE);
+  ok &= testFuncDetail(Arch::kPPC64_BE);
   ok &= testBranches();
   ok &= testBackwardBranch();
   ok &= testLoadImm64();
   ok &= testMemory();
 #if ASMJIT_ARCH_PPC == 64
   ok &= testExecution();
+  ok &= testExecutionGccHelper();
 #endif
 
   if (!ok) {

@@ -283,6 +283,8 @@ public:
   ASMJIT_API Error ld(Gp rt, const Mem& m);
   //! `std rs, ds(ra)` (doubleword store; DS-form, ds must be a multiple of 4).
   ASMJIT_API Error std(Gp rs, const Mem& m);
+  //! `stdu rs, ds(ra)` (doubleword store with update).
+  ASMJIT_API Error stdu(Gp rs, const Mem& m);
   //! `lwz rt, d(ra)` (word load, zero-extended).
   ASMJIT_API Error lwz(Gp rt, const Mem& m);
   //! `stw rs, d(ra)`.
@@ -295,6 +297,22 @@ public:
   ASMJIT_API Error lhz(Gp rt, const Mem& m);
   //! `sth rs, d(ra)`.
   ASMJIT_API Error sth(Gp rs, const Mem& m);
+
+  //! \}
+
+  //! \name Function Prologue & Epilogue
+  //! \{
+
+  //! Minimum stack frame size for the target ABI.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG int32_t minimum_frame_size() const noexcept {
+    return environment().is_little_endian() ? 32 : 48;
+  }
+
+  //! Saves LR and allocates `frame_size` bytes with an atomic back-chain update.
+  ASMJIT_API Error prolog(int32_t frame_size);
+  //! Deallocates the frame, restores LR, and returns.
+  ASMJIT_API Error epilog(int32_t frame_size);
 
   //! \}
 

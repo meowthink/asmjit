@@ -253,8 +253,13 @@ set(ASMJIT_SRC
   asmjit/arm/a64rapass_p.h
 
   asmjit/ppc.h
+  asmjit/ppc/ppcarchtraits_p.h
   asmjit/ppc/ppcassembler.cpp
   asmjit/ppc/ppcassembler.h
+  asmjit/ppc/ppcfunc.cpp
+  asmjit/ppc/ppcfunc_p.h
+  asmjit/ppc/ppcruntime.cpp
+  asmjit/ppc/ppcruntime.h
 
   asmjit/x86.h
   asmjit/x86/x86archtraits_p.h
