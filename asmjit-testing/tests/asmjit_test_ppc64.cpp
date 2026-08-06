@@ -279,6 +279,122 @@ static bool testMemory() {
   return checkWords(code, expected, 8);
 }
 
+static bool testMemoryExt() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.lwa(ppc::r3, ppc::ptr(ppc::r4, 8));
+  a.ldu(ppc::r3, ppc::ptr(ppc::r4, 8));
+  a.lwzu(ppc::r3, ppc::ptr(ppc::r4, -4));
+  a.lhzu(ppc::r3, ppc::ptr(ppc::r4, 6));
+  a.lha(ppc::r3, ppc::ptr(ppc::r4, 6));
+  a.lhau(ppc::r3, ppc::ptr(ppc::r4, 6));
+  a.lbzu(ppc::r3, ppc::ptr(ppc::r4, 1));
+  a.stbu(ppc::r5, ppc::ptr(ppc::r4, 2));
+  a.stwu(ppc::r5, ppc::ptr(ppc::r4, 8));
+  a.sthu(ppc::r5, ppc::ptr(ppc::r4, 10));
+
+  const uint32_t expected[] = {
+    0xE864000Au, // lwa r3, 8(r4)
+    0xE8640009u, // ldu r3, 8(r4)
+    0x8464FFFCu, // lwzu r3, -4(r4)
+    0xA4640006u, // lhzu r3, 6(r4)
+    0xA8640006u, // lha r3, 6(r4)
+    0xAC640006u, // lhau r3, 6(r4)
+    0x8C640001u, // lbzu r3, 1(r4)
+    0x9CA40002u, // stbu r5, 2(r4)
+    0x94A40008u, // stwu r5, 8(r4)
+    0xB4A4000Au  // sthu r5, 10(r4)
+  };
+  return checkWords(code, expected, 10);
+}
+
+static bool testLlSc() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.lwarx(ppc::r3, ppc::ptr(ppc::r4, ppc::r5));
+  a.ldarx(ppc::r3, ppc::ptr(ppc::r4, ppc::r5));
+  a.stwcx_(ppc::r5, ppc::ptr(ppc::r4, ppc::r5));
+  a.stdcx_(ppc::r5, ppc::ptr(ppc::r4, ppc::r5));
+
+  const uint32_t expected[] = {
+    0x7C642828u, // lwarx r3, r4, r5
+    0x7C6428A8u, // ldarx r3, r4, r5
+    0x7CA4292Du, // stwcx. r5, r4, r5
+    0x7CA429ADu  // stdcx. r5, r4, r5
+  };
+  return checkWords(code, expected, 4);
+}
+
+static bool testRotates() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.rldicl(ppc::r3, ppc::r4, 5, 6);
+  a.rldicr(ppc::r3, ppc::r4, 5, 6);
+  a.rldic(ppc::r3, ppc::r4, 5, 6);
+  a.rlwinm(ppc::r3, ppc::r4, 5, 6, 7);
+  a.rlwimi(ppc::r3, ppc::r4, 5, 6, 7);
+
+  const uint32_t expected[] = {
+    0x78832980u, // rldicl r3, r4, 5, 6
+    0x78832984u, // rldicr r3, r4, 5, 6
+    0x78832988u, // rldic r3, r4, 5, 6
+    0x5483298Eu, // rlwinm r3, r4, 5, 6, 7
+    0x5083298Eu  // rlwimi r3, r4, 5, 6, 7
+  };
+  return checkWords(code, expected, 5);
+}
+
+static bool testBarriersAndCounts() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.sync();
+  a.lwsync();
+  a.isync();
+  a.eieio();
+  a.cntlzw(ppc::r3, ppc::r4);
+  a.cntlzd(ppc::r3, ppc::r4);
+  a.cnttzd(ppc::r3, ppc::r4);
+  a.popcntd(ppc::r3, ppc::r4);
+  a.extsb(ppc::r3, ppc::r4);
+  a.extsh(ppc::r3, ppc::r4);
+  a.extsw(ppc::r3, ppc::r4);
+
+  const uint32_t expected[] = {
+    0x7C0004ACu, // sync
+    0x7C2004ACu, // lwsync
+    0x4C00012Cu, // isync
+    0x7C0006ACu, // eieio
+    0x7C830034u, // cntlzw r3, r4
+    0x7C830074u, // cntlzd r3, r4
+    0x7C830474u, // cnttzd r3, r4
+    0x7C8303F4u, // popcntd r3, r4
+    0x7C830774u, // extsb r3, r4
+    0x7C830734u, // extsh r3, r4
+    0x7C8307B4u  // extsw r3, r4
+  };
+  return checkWords(code, expected, 11);
+}
+
 #if ASMJIT_ARCH_PPC == 64
 extern "C" uint64_t ppcTestGccHelper(uint64_t a, uint64_t b) {
   return a * 3 + b;
@@ -366,6 +482,10 @@ int main() {
   ok &= testBackwardBranch();
   ok &= testLoadImm64();
   ok &= testMemory();
+  ok &= testMemoryExt();
+  ok &= testLlSc();
+  ok &= testRotates();
+  ok &= testBarriersAndCounts();
 #if ASMJIT_ARCH_PPC == 64
   ok &= testExecution();
   ok &= testExecutionGccHelper();

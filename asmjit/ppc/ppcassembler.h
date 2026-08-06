@@ -291,12 +291,85 @@ public:
   ASMJIT_API Error stw(Gp rs, const Mem& m);
   //! `lbz rt, d(ra)`.
   ASMJIT_API Error lbz(Gp rt, const Mem& m);
+  //! `lbzu rt, d(ra)`.
+  ASMJIT_API Error lbzu(Gp rt, const Mem& m);
   //! `stb rs, d(ra)`.
   ASMJIT_API Error stb(Gp rs, const Mem& m);
+  //! `stbu rs, d(ra)`.
+  ASMJIT_API Error stbu(Gp rs, const Mem& m);
   //! `lhz rt, d(ra)`.
   ASMJIT_API Error lhz(Gp rt, const Mem& m);
+  //! `lhzu rt, d(ra)`.
+  ASMJIT_API Error lhzu(Gp rt, const Mem& m);
+  //! `lha rt, d(ra)` (word load, sign-extended).
+  ASMJIT_API Error lha(Gp rt, const Mem& m);
+  //! `lhau rt, d(ra)`.
+  ASMJIT_API Error lhau(Gp rt, const Mem& m);
   //! `sth rs, d(ra)`.
   ASMJIT_API Error sth(Gp rs, const Mem& m);
+  //! `sthu rs, d(ra)`.
+  ASMJIT_API Error sthu(Gp rs, const Mem& m);
+  //! `lwzu rt, d(ra)`.
+  ASMJIT_API Error lwzu(Gp rt, const Mem& m);
+  //! `stwu rs, d(ra)`.
+  ASMJIT_API Error stwu(Gp rs, const Mem& m);
+  //! `lwa rt, ds(ra)` (word load algebraic, DS-form).
+  ASMJIT_API Error lwa(Gp rt, const Mem& m);
+  //! `ldu rt, ds(ra)` (doubleword load with update, DS-form).
+  ASMJIT_API Error ldu(Gp rt, const Mem& m);
+
+  //! `lwarx rt, ra, rb` (load word and reserve).
+  ASMJIT_API Error lwarx(Gp rt, const Mem& m);
+  //! `ldarx rt, ra, rb` (load doubleword and reserve).
+  ASMJIT_API Error ldarx(Gp rt, const Mem& m);
+  //! `stwcx. rs, ra, rb` (store word conditional).
+  ASMJIT_API Error stwcx_(Gp rs, const Mem& m);
+  //! `stdcx. rs, ra, rb` (store doubleword conditional).
+  ASMJIT_API Error stdcx_(Gp rs, const Mem& m);
+
+  //! \}
+
+  //! \name Rotate Instructions
+  //! \{
+
+  //! `rldicl ra, rs, sh, mb`.
+  ASMJIT_API Error rldicl(Gp ra, Gp rs, uint8_t sh, uint8_t mb);
+  //! `rldicr ra, rs, sh, me`.
+  ASMJIT_API Error rldicr(Gp ra, Gp rs, uint8_t sh, uint8_t me);
+  //! `rldic ra, rs, sh, mb`.
+  ASMJIT_API Error rldic(Gp ra, Gp rs, uint8_t sh, uint8_t mb);
+  //! `rlwinm ra, rs, sh, mb, me`.
+  ASMJIT_API Error rlwinm(Gp ra, Gp rs, uint8_t sh, uint8_t mb, uint8_t me);
+  //! `rlwimi ra, rs, sh, mb, me`.
+  ASMJIT_API Error rlwimi(Gp ra, Gp rs, uint8_t sh, uint8_t mb, uint8_t me);
+
+  //! \}
+
+  //! \name Barriers
+  //! \{
+
+  ASMJIT_API Error sync();
+  ASMJIT_API Error lwsync();
+  ASMJIT_API Error isync();
+  ASMJIT_API Error eieio();
+
+  //! \}
+
+  //! \name Bit Counts & Extends
+  //! \{
+
+  //! `cntlzw ra, rs`.
+  ASMJIT_API Error cntlzw(Gp ra, Gp rs);
+  //! `cntlzd ra, rs`.
+  ASMJIT_API Error cntlzd(Gp ra, Gp rs);
+  //! `cnttzd ra, rs`.
+  ASMJIT_API Error cnttzd(Gp ra, Gp rs);
+  //! `popcntd ra, rs`.
+  ASMJIT_API Error popcntd(Gp ra, Gp rs);
+  //! `extsb ra, rs`.
+  ASMJIT_API Error extsb(Gp ra, Gp rs);
+  //! `extsh ra, rs`.
+  ASMJIT_API Error extsh(Gp ra, Gp rs);
 
   //! \}
 

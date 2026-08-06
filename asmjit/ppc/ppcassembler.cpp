@@ -18,6 +18,17 @@ ASMJIT_BEGIN_SUB_NAMESPACE(ppc)
 //! \addtogroup asmjit_ppc
 //! \{
 
+static inline uint32_t encode_rldi(uint32_t rs, uint32_t ra, uint8_t sh, uint8_t mb, uint32_t xo) noexcept {
+  const uint32_t sh6 = sh & 0x3Fu;
+  const uint32_t mb6 = mb & 0x3Fu;
+  return (30u << 26) |
+         (rs << 21) |
+         (ra << 16) |
+         ((sh6 & 0x1Fu) << 11) | (((sh6 >> 5) & 1u) << 1) |
+         ((mb6 & 0x1Fu) << 6) | (((mb6 >> 5) & 1u) << 5) |
+         xo;
+}
+
 Assembler::Assembler(CodeHolder* code) noexcept
   : BaseAssembler() {
   _arch_mask = (uint64_t(1) << uint32_t(Arch::kPPC64_LE)) |
@@ -99,16 +110,7 @@ Error Assembler::sldi(Gp ra, Gp rs, uint8_t sh) {
     return or_(ra, rs, rs);
   }
 
-  const uint32_t sh6 = sh & 0x3Fu;
-  const uint32_t mb6 = (63u - sh) & 0x3Fu;
-  const uint32_t word =
-    (30u << 26) |
-    (rs.id() << 21) |
-    (ra.id() << 16) |
-    ((sh6 & 0x1Fu) << 11) | (((sh6 >> 5) & 1u) << 1) |
-    ((mb6 & 0x1Fu) << 6) | (((mb6 >> 5) & 1u) << 5) |
-    (2u << 1);
-  return emit32(word);
+  return rldicr(ra, rs, sh, uint8_t(63 - sh));
 }
 
 Error Assembler::loadImm64(Gp rt, uint64_t imm) {
@@ -153,6 +155,14 @@ Error Assembler::srad(Gp ra, Gp rs, Gp rb) {
 
 Error Assembler::extsw(Gp ra, Gp rs) {
   return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (986u << 1));
+}
+
+Error Assembler::extsb(Gp ra, Gp rs) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (954u << 1));
+}
+
+Error Assembler::extsh(Gp ra, Gp rs) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (922u << 1));
 }
 
 Error Assembler::mulld(Gp rt, Gp ra, Gp rb) {
@@ -301,6 +311,144 @@ Error Assembler::sth(Gp rs, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
     return report_error(make_error(Error::kInvalidAddress));
   return emit32((44u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
+}
+
+Error Assembler::lbzu(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((35u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
+}
+
+Error Assembler::stbu(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((39u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
+}
+
+Error Assembler::lhzu(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((41u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
+}
+
+Error Assembler::lha(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((42u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
+}
+
+Error Assembler::lhau(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((43u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
+}
+
+Error Assembler::sthu(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((45u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
+}
+
+Error Assembler::lwzu(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((33u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
+}
+
+Error Assembler::stwu(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((37u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())));
+}
+
+Error Assembler::lwa(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 3u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((58u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())) | 2u);
+}
+
+Error Assembler::ldu(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 3u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((58u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())) | 1u);
+}
+
+Error Assembler::lwarx(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (20u << 1));
+}
+
+Error Assembler::ldarx(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (84u << 1));
+}
+
+Error Assembler::stwcx_(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (150u << 1) | 1u);
+}
+
+Error Assembler::stdcx_(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (214u << 1) | 1u);
+}
+
+Error Assembler::rldicl(Gp ra, Gp rs, uint8_t sh, uint8_t mb) {
+  return emit32(encode_rldi(rs.id(), ra.id(), sh, mb, 0));
+}
+
+Error Assembler::rldicr(Gp ra, Gp rs, uint8_t sh, uint8_t me) {
+  return emit32(encode_rldi(rs.id(), ra.id(), sh, me, 4));
+}
+
+Error Assembler::rldic(Gp ra, Gp rs, uint8_t sh, uint8_t mb) {
+  return emit32(encode_rldi(rs.id(), ra.id(), sh, mb, 8));
+}
+
+Error Assembler::rlwinm(Gp ra, Gp rs, uint8_t sh, uint8_t mb, uint8_t me) {
+  return emit32((21u << 26) | (rs.id() << 21) | (ra.id() << 16) |
+                ((sh & 0x1Fu) << 11) | ((mb & 0x1Fu) << 6) | ((me & 0x1Fu) << 1));
+}
+
+Error Assembler::rlwimi(Gp ra, Gp rs, uint8_t sh, uint8_t mb, uint8_t me) {
+  return emit32((20u << 26) | (rs.id() << 21) | (ra.id() << 16) |
+                ((sh & 0x1Fu) << 11) | ((mb & 0x1Fu) << 6) | ((me & 0x1Fu) << 1));
+}
+
+Error Assembler::sync() {
+  return emit32((31u << 26) | (598u << 1));
+}
+
+Error Assembler::lwsync() {
+  return emit32((31u << 26) | (1u << 21) | (598u << 1));
+}
+
+Error Assembler::isync() {
+  return emit32((19u << 26) | (150u << 1));
+}
+
+Error Assembler::eieio() {
+  return emit32((31u << 26) | (854u << 1));
+}
+
+Error Assembler::cntlzw(Gp ra, Gp rs) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (26u << 1));
+}
+
+Error Assembler::cntlzd(Gp ra, Gp rs) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (58u << 1));
+}
+
+Error Assembler::cnttzd(Gp ra, Gp rs) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (570u << 1));
+}
+
+Error Assembler::popcntd(Gp ra, Gp rs) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (506u << 1));
 }
 
 Error Assembler::prolog(int32_t frame_size) {
