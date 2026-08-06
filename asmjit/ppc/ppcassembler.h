@@ -98,6 +98,118 @@ static constexpr Fp f29 { 29 };
 static constexpr Fp f30 { 30 };
 static constexpr Fp f31 { 31 };
 
+//! PowerPC VSX register (vs0..vs63; vs32..vs63 alias the vector registers).
+class Vsx : public Reg {
+public:
+  ASMJIT_DEFINE_FINAL_REG(Vsx, Reg, RegTraits<RegType::kVec128>)
+};
+
+//! VSX register constants.
+static constexpr Vsx vs0 { 0 };
+static constexpr Vsx vs1 { 1 };
+static constexpr Vsx vs2 { 2 };
+static constexpr Vsx vs3 { 3 };
+static constexpr Vsx vs4 { 4 };
+static constexpr Vsx vs5 { 5 };
+static constexpr Vsx vs6 { 6 };
+static constexpr Vsx vs7 { 7 };
+static constexpr Vsx vs8 { 8 };
+static constexpr Vsx vs9 { 9 };
+static constexpr Vsx vs10 { 10 };
+static constexpr Vsx vs11 { 11 };
+static constexpr Vsx vs12 { 12 };
+static constexpr Vsx vs13 { 13 };
+static constexpr Vsx vs14 { 14 };
+static constexpr Vsx vs15 { 15 };
+static constexpr Vsx vs16 { 16 };
+static constexpr Vsx vs17 { 17 };
+static constexpr Vsx vs18 { 18 };
+static constexpr Vsx vs19 { 19 };
+static constexpr Vsx vs20 { 20 };
+static constexpr Vsx vs21 { 21 };
+static constexpr Vsx vs22 { 22 };
+static constexpr Vsx vs23 { 23 };
+static constexpr Vsx vs24 { 24 };
+static constexpr Vsx vs25 { 25 };
+static constexpr Vsx vs26 { 26 };
+static constexpr Vsx vs27 { 27 };
+static constexpr Vsx vs28 { 28 };
+static constexpr Vsx vs29 { 29 };
+static constexpr Vsx vs30 { 30 };
+static constexpr Vsx vs31 { 31 };
+static constexpr Vsx vs32 { 32 };
+static constexpr Vsx vs33 { 33 };
+static constexpr Vsx vs34 { 34 };
+static constexpr Vsx vs35 { 35 };
+static constexpr Vsx vs36 { 36 };
+static constexpr Vsx vs37 { 37 };
+static constexpr Vsx vs38 { 38 };
+static constexpr Vsx vs39 { 39 };
+static constexpr Vsx vs40 { 40 };
+static constexpr Vsx vs41 { 41 };
+static constexpr Vsx vs42 { 42 };
+static constexpr Vsx vs43 { 43 };
+static constexpr Vsx vs44 { 44 };
+static constexpr Vsx vs45 { 45 };
+static constexpr Vsx vs46 { 46 };
+static constexpr Vsx vs47 { 47 };
+static constexpr Vsx vs48 { 48 };
+static constexpr Vsx vs49 { 49 };
+static constexpr Vsx vs50 { 50 };
+static constexpr Vsx vs51 { 51 };
+static constexpr Vsx vs52 { 52 };
+static constexpr Vsx vs53 { 53 };
+static constexpr Vsx vs54 { 54 };
+static constexpr Vsx vs55 { 55 };
+static constexpr Vsx vs56 { 56 };
+static constexpr Vsx vs57 { 57 };
+static constexpr Vsx vs58 { 58 };
+static constexpr Vsx vs59 { 59 };
+static constexpr Vsx vs60 { 60 };
+static constexpr Vsx vs61 { 61 };
+static constexpr Vsx vs62 { 62 };
+static constexpr Vsx vs63 { 63 };
+
+//! PowerPC VMX (Altivec) register.
+class Vr : public Reg {
+public:
+  ASMJIT_DEFINE_FINAL_REG(Vr, Reg, RegTraits<RegType::kVec128>)
+};
+
+//! Vector register constants.
+static constexpr Vr v0 { 0 };
+static constexpr Vr v1 { 1 };
+static constexpr Vr v2 { 2 };
+static constexpr Vr v3 { 3 };
+static constexpr Vr v4 { 4 };
+static constexpr Vr v5 { 5 };
+static constexpr Vr v6 { 6 };
+static constexpr Vr v7 { 7 };
+static constexpr Vr v8 { 8 };
+static constexpr Vr v9 { 9 };
+static constexpr Vr v10 { 10 };
+static constexpr Vr v11 { 11 };
+static constexpr Vr v12 { 12 };
+static constexpr Vr v13 { 13 };
+static constexpr Vr v14 { 14 };
+static constexpr Vr v15 { 15 };
+static constexpr Vr v16 { 16 };
+static constexpr Vr v17 { 17 };
+static constexpr Vr v18 { 18 };
+static constexpr Vr v19 { 19 };
+static constexpr Vr v20 { 20 };
+static constexpr Vr v21 { 21 };
+static constexpr Vr v22 { 22 };
+static constexpr Vr v23 { 23 };
+static constexpr Vr v24 { 24 };
+static constexpr Vr v25 { 25 };
+static constexpr Vr v26 { 26 };
+static constexpr Vr v27 { 27 };
+static constexpr Vr v28 { 28 };
+static constexpr Vr v29 { 29 };
+static constexpr Vr v30 { 30 };
+static constexpr Vr v31 { 31 };
+
 //! ELFv1 function descriptor
 struct FunctionDescriptor {
   void* entry;
@@ -984,6 +1096,627 @@ public:
 
   //! \}
 
+  //! \name VSX Move Instructions
+  //! \{
+
+  //! `mfvsrd rt, xs` (move from VSR doubleword).
+  ASMJIT_API Error mfvsrd(Gp rt, Vsx xs);
+  //! `mfvsrld rt, xs` (move from VSR left doubleword).
+  ASMJIT_API Error mfvsrld(Gp rt, Vsx xs);
+  //! `mfvsrwz rt, xs` (move from VSR word and zero).
+  ASMJIT_API Error mfvsrwz(Gp rt, Vsx xs);
+  //! `mtvsrd xt, ra` (move to VSR doubleword).
+  ASMJIT_API Error mtvsrd(Vsx xt, Gp ra);
+  //! `mtvsrdd xt, ra, rb` (move to VSR double doubleword).
+  ASMJIT_API Error mtvsrdd(Vsx xt, Gp ra, Gp rb);
+  //! `mtvsrwa xt, ra` (move to VSR word algebraic).
+  ASMJIT_API Error mtvsrwa(Vsx xt, Gp ra);
+  //! `mtvsrws xt, ra` (move to VSR word signed).
+  ASMJIT_API Error mtvsrws(Vsx xt, Gp ra);
+  //! `mtvsrwz xt, ra` (move to VSR word and zero).
+  ASMJIT_API Error mtvsrwz(Vsx xt, Gp ra);
+  //! `mfvrd rt, vr` (move from vector register doubleword).
+  ASMJIT_API Error mfvrd(Gp rt, Vr vr);
+  //! `mfvrwz rt, vr` (move from vector register word and zero).
+  ASMJIT_API Error mfvrwz(Gp rt, Vr vr);
+  //! `mtvrd vr, rt` (move to vector register doubleword).
+  ASMJIT_API Error mtvrd(Vr vr, Gp rt);
+  //! `mtvrwa vr, rt` (move to vector register word algebraic).
+  ASMJIT_API Error mtvrwa(Vr vr, Gp rt);
+  //! `mtvrwz vr, rt` (move to vector register word and zero).
+  ASMJIT_API Error mtvrwz(Vr vr, Gp rt);
+
+  //! \}
+
+  //! \name VSX Memory Instructions
+  //! \{
+
+  //! `lxsd xt, ds(ra)` (load VSX scalar doubleword; ds multiple of 4).
+  ASMJIT_API Error lxsd(Vsx xt, const Mem& m);
+  //! `lxssp xt, ds(ra)` (load VSX scalar single).
+  ASMJIT_API Error lxssp(Vsx xt, const Mem& m);
+  //! `lxsdx xt, ra, rb` (load VSX scalar doubleword indexed).
+  ASMJIT_API Error lxsdx(Vsx xt, const Mem& m);
+  //! `lxsspx xt, ra, rb` (load VSX scalar single indexed).
+  ASMJIT_API Error lxsspx(Vsx xt, const Mem& m);
+  //! `lxsiwzx xt, ra, rb` (load VSX scalar as integer word and zero indexed).
+  ASMJIT_API Error lxsiwzx(Vsx xt, const Mem& m);
+  //! `lxsiwax xt, ra, rb` (load VSX scalar as integer word algebraic indexed).
+  ASMJIT_API Error lxsiwax(Vsx xt, const Mem& m);
+  //! `lxv xt, dq(ra)` (load VSX vector; dq multiple of 16).
+  ASMJIT_API Error lxv(Vsx xt, const Mem& m);
+  //! `lxvx xt, ra, rb` (load VSX vector indexed).
+  ASMJIT_API Error lxvx(Vsx xt, const Mem& m);
+  //! `stxsd xs, ds(ra)` (store VSX scalar doubleword).
+  ASMJIT_API Error stxsd(Vsx xs, const Mem& m);
+  //! `stxssp xs, ds(ra)` (store VSX scalar single).
+  ASMJIT_API Error stxssp(Vsx xs, const Mem& m);
+  //! `stxsdx xs, ra, rb` (store VSX scalar doubleword indexed).
+  ASMJIT_API Error stxsdx(Vsx xs, const Mem& m);
+  //! `stxsspx xs, ra, rb` (store VSX scalar single indexed).
+  ASMJIT_API Error stxsspx(Vsx xs, const Mem& m);
+  //! `stxsiwx xs, ra, rb` (store VSX scalar as integer word indexed).
+  ASMJIT_API Error stxsiwx(Vsx xs, const Mem& m);
+  //! `stxv xs, dq(ra)` (store VSX vector).
+  ASMJIT_API Error stxv(Vsx xs, const Mem& m);
+  //! `stxvx xs, ra, rb` (store VSX vector indexed).
+  ASMJIT_API Error stxvx(Vsx xs, const Mem& m);
+
+  //! \}
+
+  //! \name VSX Scalar Floating-Point Instructions
+  //! \{
+
+  //! `xsabsdp xt, xb`.
+  ASMJIT_API Error xsabsdp(Vsx xt, Vsx xb);
+  //! `xsadddp xt, xa, xb`.
+  ASMJIT_API Error xsadddp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xscpsgndp xt, xa, xb` (copy sign).
+  ASMJIT_API Error xscpsgndp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsdivdp xt, xa, xb`.
+  ASMJIT_API Error xsdivdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsmaddadp xt, xa, xb` (fused multiply-add).
+  ASMJIT_API Error xsmaddadp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsmaddmdp xt, xa, xb`.
+  ASMJIT_API Error xsmaddmdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsmsubadp xt, xa, xb`.
+  ASMJIT_API Error xsmsubadp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsmsubmdp xt, xa, xb`.
+  ASMJIT_API Error xsmsubmdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsmuldp xt, xa, xb`.
+  ASMJIT_API Error xsmuldp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsnegdp xt, xb`.
+  ASMJIT_API Error xsnegdp(Vsx xt, Vsx xb);
+  //! `xsnmsubadp xt, xa, xb`.
+  ASMJIT_API Error xsnmsubadp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsnmsubmdp xt, xa, xb`.
+  ASMJIT_API Error xsnmsubmdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsnmaddadp xt, xa, xb`.
+  ASMJIT_API Error xsnmaddadp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsnmaddmdp xt, xa, xb`.
+  ASMJIT_API Error xsnmaddmdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xssqrtdp xt, xb`.
+  ASMJIT_API Error xssqrtdp(Vsx xt, Vsx xb);
+  //! `xssubdp xt, xa, xb`.
+  ASMJIT_API Error xssubdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsaddsp xt, xa, xb` (single precision).
+  ASMJIT_API Error xsaddsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsdivsp xt, xa, xb`.
+  ASMJIT_API Error xsdivsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsmaddasp xt, xa, xb`.
+  ASMJIT_API Error xsmaddasp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsmaddmsp xt, xa, xb`.
+  ASMJIT_API Error xsmaddmsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsmsubasp xt, xa, xb`.
+  ASMJIT_API Error xsmsubasp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsmsubmsp xt, xa, xb`.
+  ASMJIT_API Error xsmsubmsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsmulsp xt, xa, xb`.
+  ASMJIT_API Error xsmulsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsnmsubasp xt, xa, xb`.
+  ASMJIT_API Error xsnmsubasp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsnmsubmsp xt, xa, xb`.
+  ASMJIT_API Error xsnmsubmsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsnmaddasp xt, xa, xb`.
+  ASMJIT_API Error xsnmaddasp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xsnmaddmsp xt, xa, xb`.
+  ASMJIT_API Error xsnmaddmsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xssqrtsp xt, xb`.
+  ASMJIT_API Error xssqrtsp(Vsx xt, Vsx xb);
+  //! `xssubsp xt, xa, xb`.
+  ASMJIT_API Error xssubsp(Vsx xt, Vsx xa, Vsx xb);
+
+  //! \}
+
+  //! \name VSX Compare, Round & Convert Instructions
+  //! \{
+
+  //! `xscmpudp bf, xa, xb` (compare unordered).
+  ASMJIT_API Error xscmpudp(uint32_t bf, Vsx xa, Vsx xb);
+  //! `xscmpodp bf, xa, xb` (compare ordered).
+  ASMJIT_API Error xscmpodp(uint32_t bf, Vsx xa, Vsx xb);
+  //! `xscmpeqdp xt, xa, xb`.
+  ASMJIT_API Error xscmpeqdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xscmpgedp xt, xa, xb`.
+  ASMJIT_API Error xscmpgedp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xscmpgtdp xt, xa, xb`.
+  ASMJIT_API Error xscmpgtdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xstdivdp bf, xa, xb` (test divide).
+  ASMJIT_API Error xstdivdp(uint32_t bf, Vsx xa, Vsx xb);
+  //! `xstsqrtdp bf, xb` (test square root).
+  ASMJIT_API Error xstsqrtdp(uint32_t bf, Vsx xb);
+  //! `xsrdpi xt, xb` (round to nearest).
+  ASMJIT_API Error xsrdpi(Vsx xt, Vsx xb);
+  //! `xsrdpic xt, xb` (round to nearest with current rounding).
+  ASMJIT_API Error xsrdpic(Vsx xt, Vsx xb);
+  //! `xsrdpiz xt, xb` (round toward zero).
+  ASMJIT_API Error xsrdpiz(Vsx xt, Vsx xb);
+  //! `xsrdpip xt, xb` (round toward plus infinity).
+  ASMJIT_API Error xsrdpip(Vsx xt, Vsx xb);
+  //! `xsrdpim xt, xb` (round toward minus infinity).
+  ASMJIT_API Error xsrdpim(Vsx xt, Vsx xb);
+  //! `xscvdpsp xt, xb` (convert double to single).
+  ASMJIT_API Error xscvdpsp(Vsx xt, Vsx xb);
+  //! `xscvspdp xt, xb` (convert single to double).
+  ASMJIT_API Error xscvspdp(Vsx xt, Vsx xb);
+  //! `xscvdpsxds xt, xb` (convert double to signed doubleword).
+  ASMJIT_API Error xscvdpsxds(Vsx xt, Vsx xb);
+  //! `xscvdpuxds xt, xb` (convert double to unsigned doubleword).
+  ASMJIT_API Error xscvdpuxds(Vsx xt, Vsx xb);
+  //! `xscvsxddp xt, xb` (convert signed doubleword to double).
+  ASMJIT_API Error xscvsxddp(Vsx xt, Vsx xb);
+  //! `xscvuxddp xt, xb` (convert unsigned doubleword to double).
+  ASMJIT_API Error xscvuxddp(Vsx xt, Vsx xb);
+  //! `xscvdpsxws xt, xb` (convert double to signed word).
+  ASMJIT_API Error xscvdpsxws(Vsx xt, Vsx xb);
+  //! `xscvdpuxws xt, xb` (convert double to unsigned word).
+  ASMJIT_API Error xscvdpuxws(Vsx xt, Vsx xb);
+  //! `xscvsxdsp xt, xb` (convert signed doubleword to single).
+  ASMJIT_API Error xscvsxdsp(Vsx xt, Vsx xb);
+  //! `xscvuxdsp xt, xb` (convert unsigned doubleword to single).
+  ASMJIT_API Error xscvuxdsp(Vsx xt, Vsx xb);
+
+  //! \name VSX Vector Floating-Point Instructions
+  //! \{
+
+  //! `xvadddp xt, xa, xb` (vector add double-precision).
+  ASMJIT_API Error xvadddp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvaddsp xt, xa, xb` (vector add single-precision).
+  ASMJIT_API Error xvaddsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvsubdp xt, xa, xb` (vector subtract double-precision).
+  ASMJIT_API Error xvsubdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvsubsp xt, xa, xb` (vector subtract single-precision).
+  ASMJIT_API Error xvsubsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmuldp xt, xa, xb` (vector multiply double-precision).
+  ASMJIT_API Error xvmuldp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmulsp xt, xa, xb` (vector multiply single-precision).
+  ASMJIT_API Error xvmulsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvdivdp xt, xa, xb` (vector divide double-precision).
+  ASMJIT_API Error xvdivdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvdivsp xt, xa, xb` (vector divide single-precision).
+  ASMJIT_API Error xvdivsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmaddadp xt, xa, xb` (vector multiply-add double-precision, A form).
+  ASMJIT_API Error xvmaddadp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmaddmdp xt, xa, xb` (vector multiply-add double-precision, M form).
+  ASMJIT_API Error xvmaddmdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmsubadp xt, xa, xb` (vector multiply-subtract double-precision, A form).
+  ASMJIT_API Error xvmsubadp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmsubmdp xt, xa, xb` (vector multiply-subtract double-precision, M form).
+  ASMJIT_API Error xvmsubmdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvnmaddadp xt, xa, xb` (vector negative multiply-add double-precision, A form).
+  ASMJIT_API Error xvnmaddadp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvnmaddmdp xt, xa, xb` (vector negative multiply-add double-precision, M form).
+  ASMJIT_API Error xvnmaddmdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvnmsubadp xt, xa, xb` (vector negative multiply-subtract double-precision, A form).
+  ASMJIT_API Error xvnmsubadp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvnmsubmdp xt, xa, xb` (vector negative multiply-subtract double-precision, M form).
+  ASMJIT_API Error xvnmsubmdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmaddasp xt, xa, xb` (vector multiply-add single-precision, A form).
+  ASMJIT_API Error xvmaddasp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmaddmsp xt, xa, xb` (vector multiply-add single-precision, M form).
+  ASMJIT_API Error xvmaddmsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmsubasp xt, xa, xb` (vector multiply-subtract single-precision, A form).
+  ASMJIT_API Error xvmsubasp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmsubmsp xt, xa, xb` (vector multiply-subtract single-precision, M form).
+  ASMJIT_API Error xvmsubmsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvnmaddasp xt, xa, xb` (vector negative multiply-add single-precision, A form).
+  ASMJIT_API Error xvnmaddasp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvnmaddmsp xt, xa, xb` (vector negative multiply-add single-precision, M form).
+  ASMJIT_API Error xvnmaddmsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvnmsubasp xt, xa, xb` (vector negative multiply-subtract single-precision, A form).
+  ASMJIT_API Error xvnmsubasp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvnmsubmsp xt, xa, xb` (vector negative multiply-subtract single-precision, M form).
+  ASMJIT_API Error xvnmsubmsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmaxdp xt, xa, xb` (vector maximum double-precision).
+  ASMJIT_API Error xvmaxdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmindp xt, xa, xb` (vector minimum double-precision).
+  ASMJIT_API Error xvmindp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvmaxsp xt, xa, xb` (vector maximum single-precision).
+  ASMJIT_API Error xvmaxsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvminsp xt, xa, xb` (vector minimum single-precision).
+  ASMJIT_API Error xvminsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvcmpeqdp xt, xa, xb` (vector compare equal double-precision).
+  ASMJIT_API Error xvcmpeqdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvcmpgtdp xt, xa, xb` (vector compare greater-than double-precision).
+  ASMJIT_API Error xvcmpgtdp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvcmpgedp xt, xa, xb` (vector compare greater-than-or-equal double-precision).
+  ASMJIT_API Error xvcmpgedp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvcmpeqsp xt, xa, xb` (vector compare equal single-precision).
+  ASMJIT_API Error xvcmpeqsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvcmpgtsp xt, xa, xb` (vector compare greater-than single-precision).
+  ASMJIT_API Error xvcmpgtsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvcmpgesp xt, xa, xb` (vector compare greater-than-or-equal single-precision).
+  ASMJIT_API Error xvcmpgesp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvabsdp xt, xb` (vector absolute double-precision).
+  ASMJIT_API Error xvabsdp(Vsx xt, Vsx xb);
+  //! `xvabssp xt, xb` (vector absolute single-precision).
+  ASMJIT_API Error xvabssp(Vsx xt, Vsx xb);
+  //! `xvnabsdp xt, xb` (vector negative absolute double-precision).
+  ASMJIT_API Error xvnabsdp(Vsx xt, Vsx xb);
+  //! `xvnabssp xt, xb` (vector negative absolute single-precision).
+  ASMJIT_API Error xvnabssp(Vsx xt, Vsx xb);
+  //! `xvnegdp xt, xb` (vector negate double-precision).
+  ASMJIT_API Error xvnegdp(Vsx xt, Vsx xb);
+  //! `xvnegsp xt, xb` (vector negate single-precision).
+  ASMJIT_API Error xvnegsp(Vsx xt, Vsx xb);
+  //! `xvcpsgndp xt, xa, xb` (vector copy sign double-precision).
+  ASMJIT_API Error xvcpsgndp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvcpsgnsp xt, xa, xb` (vector copy sign single-precision).
+  ASMJIT_API Error xvcpsgnsp(Vsx xt, Vsx xa, Vsx xb);
+  //! `xvsqrtdp xt, xb` (vector square root double-precision).
+  ASMJIT_API Error xvsqrtdp(Vsx xt, Vsx xb);
+  //! `xvsqrtsp xt, xb` (vector square root single-precision).
+  ASMJIT_API Error xvsqrtsp(Vsx xt, Vsx xb);
+  //! `xvrsqrtedp xt, xb` (vector reciprocal square root estimate double-precision).
+  ASMJIT_API Error xvrsqrtedp(Vsx xt, Vsx xb);
+  //! `xvrsqrtesp xt, xb` (vector reciprocal square root estimate single-precision).
+  ASMJIT_API Error xvrsqrtesp(Vsx xt, Vsx xb);
+  //! `xvcvsxwdp xt, xb` (convert signed word to double-precision).
+  ASMJIT_API Error xvcvsxwdp(Vsx xt, Vsx xb);
+  //! `xvcvuxwdp xt, xb` (convert unsigned word to double-precision).
+  ASMJIT_API Error xvcvuxwdp(Vsx xt, Vsx xb);
+  //! `xvcvsxwsp xt, xb` (convert signed word to single-precision).
+  ASMJIT_API Error xvcvsxwsp(Vsx xt, Vsx xb);
+  //! `xvcvuxwsp xt, xb` (convert unsigned word to single-precision).
+  ASMJIT_API Error xvcvuxwsp(Vsx xt, Vsx xb);
+  //! `xvcvdpsxws xt, xb` (convert double-precision to signed word).
+  ASMJIT_API Error xvcvdpsxws(Vsx xt, Vsx xb);
+  //! `xvcvdpuxws xt, xb` (convert double-precision to unsigned word).
+  ASMJIT_API Error xvcvdpuxws(Vsx xt, Vsx xb);
+  //! `xvcvdpsxds xt, xb` (convert double-precision to signed doubleword).
+  ASMJIT_API Error xvcvdpsxds(Vsx xt, Vsx xb);
+  //! `xvcvdpuxds xt, xb` (convert double-precision to unsigned doubleword).
+  ASMJIT_API Error xvcvdpuxds(Vsx xt, Vsx xb);
+  //! `xvcvsxddp xt, xb` (convert signed doubleword to double-precision).
+  ASMJIT_API Error xvcvsxddp(Vsx xt, Vsx xb);
+  //! `xvcvuxddp xt, xb` (convert unsigned doubleword to double-precision).
+  ASMJIT_API Error xvcvuxddp(Vsx xt, Vsx xb);
+  //! `xvcvdpsp xt, xb` (convert double-precision to single-precision).
+  ASMJIT_API Error xvcvdpsp(Vsx xt, Vsx xb);
+  //! `xvcvspdp xt, xb` (convert single-precision to double-precision).
+  ASMJIT_API Error xvcvspdp(Vsx xt, Vsx xb);
+
+  //! \}
+
+  //! \name VSX Vector Logical & Permute Instructions
+  //! \{
+
+  //! `xxlxor xt, xa, xb`.
+  ASMJIT_API Error xxlxor(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxlor xt, xa, xb`.
+  ASMJIT_API Error xxlor(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxland xt, xa, xb`.
+  ASMJIT_API Error xxland(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxlandc xt, xa, xb`.
+  ASMJIT_API Error xxlandc(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxlorc xt, xa, xb`.
+  ASMJIT_API Error xxlorc(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxlnand xt, xa, xb`.
+  ASMJIT_API Error xxlnand(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxlnor xt, xa, xb`.
+  ASMJIT_API Error xxlnor(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxleqv xt, xa, xb`.
+  ASMJIT_API Error xxleqv(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxsel xt, xa, xb, xc` (select).
+  ASMJIT_API Error xxsel(Vsx xt, Vsx xa, Vsx xb, Vsx xc);
+  //! `xxperm xt, xa, xb` (permute).
+  ASMJIT_API Error xxperm(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxpermdi xt, xa, xb, dm` (permute doubleword immediate).
+  ASMJIT_API Error xxpermdi(Vsx xt, Vsx xa, Vsx xb, uint32_t dm);
+  //! `xxmrghd xt, xa, xb` (merge high doubleword).
+  ASMJIT_API Error xxmrghd(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxmrgld xt, xa, xb` (merge low doubleword).
+  ASMJIT_API Error xxmrgld(Vsx xt, Vsx xa, Vsx xb);
+  //! `xxspltd xt, xb, uim` (splat doubleword).
+  ASMJIT_API Error xxspltd(Vsx xt, Vsx xb, uint32_t uim);
+  //! `xxspltw xt, xb, uim` (splat word).
+  ASMJIT_API Error xxspltw(Vsx xt, Vsx xb, uint32_t uim);
+  //! `xxswapd xt, xa` (swap doublewords).
+  ASMJIT_API Error xxswapd(Vsx xt, Vsx xa);
+
+  //! \}
+
+  //! \name VMX (Altivec) Memory Instructions
+  //! \{
+
+  //! `lvx vrt, ra, rb` (load vector indexed).
+  ASMJIT_API Error lvx(Vr vrt, const Mem& m);
+  //! `lvebx vrt, ra, rb` (load vector element byte indexed).
+  ASMJIT_API Error lvebx(Vr vrt, const Mem& m);
+  //! `lvehx vrt, ra, rb` (load vector element halfword indexed).
+  ASMJIT_API Error lvehx(Vr vrt, const Mem& m);
+  //! `lvewx vrt, ra, rb` (load vector element word indexed).
+  ASMJIT_API Error lvewx(Vr vrt, const Mem& m);
+  //! `lvxl vrt, ra, rb` (load vector indexed LRU).
+  ASMJIT_API Error lvxl(Vr vrt, const Mem& m);
+  //! `stvx vrs, ra, rb` (store vector indexed).
+  ASMJIT_API Error stvx(Vr vrs, const Mem& m);
+  //! `stvebx vrs, ra, rb` (store vector element byte indexed).
+  ASMJIT_API Error stvebx(Vr vrs, const Mem& m);
+  //! `stvehx vrs, ra, rb` (store vector element halfword indexed).
+  ASMJIT_API Error stvehx(Vr vrs, const Mem& m);
+  //! `stvewx vrs, ra, rb` (store vector element word indexed).
+  ASMJIT_API Error stvewx(Vr vrs, const Mem& m);
+  //! `stvxl vrs, ra, rb` (store vector indexed LRU).
+  ASMJIT_API Error stvxl(Vr vrs, const Mem& m);
+
+  //! \}
+
+  //! \name VMX (Altivec) Integer Instructions
+  //! \{
+
+  //! `vaddubm vrt, vra, vrb` and the other elementary adds.
+  ASMJIT_API Error vaddubm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vadduhm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vadduwm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vaddudm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vaddcuw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsububm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubuhm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubuwm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubudm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubcuw(Vr vrt, Vr vra, Vr vrb);
+  //! Vector saturating add/subtract.
+  ASMJIT_API Error vaddsbs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vaddshs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vaddsws(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vaddubs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vadduhs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vadduws(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubsbs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubshs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubsws(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsububs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubuhs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubuws(Vr vrt, Vr vra, Vr vrb);
+  //! Vector 128-bit add/subtract with carry/borrow.
+  ASMJIT_API Error vaddcuq(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vadduqm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vaddeuqm(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vaddecuq(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vsubcuq(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubuqm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsubeuqm(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vsubecuq(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  //! Vector absolute difference.
+  ASMJIT_API Error vabsdub(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vabsduh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vabsduw(Vr vrt, Vr vra, Vr vrb);
+  //! `vand vrt, vra, vrb` and the other vector logicals.
+  ASMJIT_API Error vand(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vandc(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vor(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vxor(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vnor(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error veqv(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vnand(Vr vrt, Vr vra, Vr vrb);
+  //! Vector shifts.
+  ASMJIT_API Error vsl(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsr(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsld(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsrd(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsrad(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vslw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsrw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsraw(Vr vrt, Vr vra, Vr vrb);
+  //! Vector shift by byte/halfword/element/octet/variable.
+  ASMJIT_API Error vslb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vslh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsrb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsrh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vslo(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsro(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vslv(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsrv(Vr vrt, Vr vra, Vr vrb);
+  //! Vector rotate and rotate with mask.
+  ASMJIT_API Error vrlb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vrlh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vrlw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vrld(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vrlwmi(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vrlwnm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vrldmi(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vrldnm(Vr vrt, Vr vra, Vr vrb);
+  //! Vector compares.
+  ASMJIT_API Error vcmpequb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpequh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpequw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpequd(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpgtsb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpgtsh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpgtsw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpgtsd(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpgtub(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpgtuh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpgtuw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpgtud(Vr vrt, Vr vra, Vr vrb);
+  //! Vector compare not equal.
+  ASMJIT_API Error vcmpneb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpneh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpnew(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpnezb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpnezh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vcmpnezw(Vr vrt, Vr vra, Vr vrb);
+  //! Vector min/max.
+  ASMJIT_API Error vminub(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vminuh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vminuw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vminsb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vminsh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vminsw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmaxub(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmaxuh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmaxuw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmaxsb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmaxsh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmaxsw(Vr vrt, Vr vra, Vr vrb);
+  //! Vector doubleword min/max.
+  ASMJIT_API Error vmaxsd(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmaxud(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vminsd(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vminud(Vr vrt, Vr vra, Vr vrb);
+  //! Vector average.
+  ASMJIT_API Error vavgub(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vavguh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vavguw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vavgsb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vavgsh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vavgsw(Vr vrt, Vr vra, Vr vrb);
+  //! Vector sum across.
+  ASMJIT_API Error vsum4sbs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsum4shs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsum4ubs(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsum2sws(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vsumsws(Vr vrt, Vr vra, Vr vrb);
+  //! Vector pack/unpack.
+  ASMJIT_API Error vpkuhum(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpkuwum(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpkuhus(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpkuwus(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpkshss(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpkswss(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpkshus(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpkswus(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vupkhsb(Vr vrt, Vr vrb);
+  ASMJIT_API Error vupkhsh(Vr vrt, Vr vrb);
+  ASMJIT_API Error vupklsb(Vr vrt, Vr vrb);
+  ASMJIT_API Error vupklsh(Vr vrt, Vr vrb);
+  //! Vector pack/unpack doubleword and pixel.
+  ASMJIT_API Error vpkudum(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpkudus(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpksdss(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpksdus(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vupkhsw(Vr vrt, Vr vrb);
+  ASMJIT_API Error vupklsw(Vr vrt, Vr vrb);
+  ASMJIT_API Error vpkpx(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vupkhpx(Vr vrt, Vr vrb);
+  ASMJIT_API Error vupklpx(Vr vrt, Vr vrb);
+  //! Vector merge.
+  ASMJIT_API Error vmrghb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmrghh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmrghw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmrglb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmrglh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmrglw(Vr vrt, Vr vra, Vr vrb);
+  //! Vector merge odd/even words.
+  ASMJIT_API Error vmrgew(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmrgow(Vr vrt, Vr vra, Vr vrb);
+  //! Vector splat.
+  ASMJIT_API Error vspltb(Vr vrt, Vr vrb, uint32_t uim);
+  ASMJIT_API Error vsplth(Vr vrt, Vr vrb, uint32_t uim);
+  ASMJIT_API Error vspltw(Vr vrt, Vr vrb, uint32_t uim);
+  ASMJIT_API Error vspltisb(Vr vrt, int32_t simm);
+  ASMJIT_API Error vspltish(Vr vrt, int32_t simm);
+  ASMJIT_API Error vspltisw(Vr vrt, int32_t simm);
+  //! Vector permute/select.
+  ASMJIT_API Error vperm(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vsel(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vsldoi(Vr vrt, Vr vra, Vr vrb, uint32_t shb);
+  ASMJIT_API Error vpermr(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vpermxor(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  //! Vector count leading zeros / population count.
+  ASMJIT_API Error vclzb(Vr vrt, Vr vrb);
+  ASMJIT_API Error vclzh(Vr vrt, Vr vrb);
+  ASMJIT_API Error vclzw(Vr vrt, Vr vrb);
+  ASMJIT_API Error vclzd(Vr vrt, Vr vrb);
+  ASMJIT_API Error vpopcntb(Vr vrt, Vr vrb);
+  ASMJIT_API Error vpopcnth(Vr vrt, Vr vrb);
+  ASMJIT_API Error vpopcntw(Vr vrt, Vr vrb);
+  ASMJIT_API Error vpopcntd(Vr vrt, Vr vrb);
+  //! Vector count trailing zeros / leading-zero byte index.
+  ASMJIT_API Error vctzb(Vr vrt, Vr vrb);
+  ASMJIT_API Error vctzh(Vr vrt, Vr vrb);
+  ASMJIT_API Error vctzw(Vr vrt, Vr vrb);
+  ASMJIT_API Error vctzd(Vr vrt, Vr vrb);
+  ASMJIT_API Error vclzlsbb(Gp rt, Vr vrb);
+  ASMJIT_API Error vctzlsbb(Gp rt, Vr vrb);
+  //! Vector multiply.
+  ASMJIT_API Error vmulouw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmuluwm(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmuleub(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmuleuh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmuleuw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmulesb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmulesh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmulesw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmuloub(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmulouh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmulosb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmulosh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmulosw(Vr vrt, Vr vra, Vr vrb);
+  //! Vector multiply by 10.
+  ASMJIT_API Error vmul10cuq(Vr vrt, Vr vra);
+  ASMJIT_API Error vmul10uq(Vr vrt, Vr vra);
+  ASMJIT_API Error vmul10euq(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vmul10ecuq(Vr vrt, Vr vra, Vr vrb);
+  //! Vector multiply-high-add / multiply-sum.
+  ASMJIT_API Error vmhaddshs(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vmhraddshs(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vmladduhm(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vmsummbm(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vmsumshm(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vmsumshs(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vmsumubm(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vmsumudm(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vmsumuhm(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  ASMJIT_API Error vmsumuhs(Vr vrt, Vr vra, Vr vrb, Vr vrc);
+  //! Vector polynomial multiply-sum.
+  ASMJIT_API Error vpmsumb(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpmsumh(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpmsumw(Vr vrt, Vr vra, Vr vrb);
+  ASMJIT_API Error vpmsumd(Vr vrt, Vr vra, Vr vrb);
+  //! Vector extract / insert.
+  ASMJIT_API Error vextractub(Vr vrt, Vr vrb, uint32_t uim);
+  ASMJIT_API Error vextractuh(Vr vrt, Vr vrb, uint32_t uim);
+  ASMJIT_API Error vextractuw(Vr vrt, Vr vrb, uint32_t uim);
+  ASMJIT_API Error vextractd(Vr vrt, Vr vrb, uint32_t uim);
+  ASMJIT_API Error vextublx(Gp rt, Gp ra, Vr vrb);
+  ASMJIT_API Error vextubrx(Gp rt, Gp ra, Vr vrb);
+  ASMJIT_API Error vextuhlx(Gp rt, Gp ra, Vr vrb);
+  ASMJIT_API Error vextuhrx(Gp rt, Gp ra, Vr vrb);
+  ASMJIT_API Error vextuwlx(Gp rt, Gp ra, Vr vrb);
+  ASMJIT_API Error vextuwrx(Gp rt, Gp ra, Vr vrb);
+  ASMJIT_API Error vinsertb(Vr vrt, Vr vrb, uint32_t uim);
+  ASMJIT_API Error vinserth(Vr vrt, Vr vrb, uint32_t uim);
+  ASMJIT_API Error vinsertw(Vr vrt, Vr vrb, uint32_t uim);
+  ASMJIT_API Error vinsertd(Vr vrt, Vr vrb, uint32_t uim);
+  //! Vector sign extend / negate / parity.
+  ASMJIT_API Error vextsb2w(Vr vrt, Vr vrb);
+  ASMJIT_API Error vextsh2w(Vr vrt, Vr vrb);
+  ASMJIT_API Error vextsw2d(Vr vrt, Vr vrb);
+  ASMJIT_API Error vextsb2d(Vr vrt, Vr vrb);
+  ASMJIT_API Error vextsh2d(Vr vrt, Vr vrb);
+  ASMJIT_API Error vnegw(Vr vrt, Vr vrb);
+  ASMJIT_API Error vnegd(Vr vrt, Vr vrb);
+  ASMJIT_API Error vprtybd(Vr vrt, Vr vrb);
+  ASMJIT_API Error vprtybw(Vr vrt, Vr vrb);
+  ASMJIT_API Error vprtybq(Vr vrt, Vr vrb);
+  //! Vector bit gather / bit permute.
+  ASMJIT_API Error vgbbd(Vr vrt, Vr vrb);
+  ASMJIT_API Error vbpermd(Vr vrt, Vr vra, Vr vrb);
+
+  //! \}
+
   //! \name Function Prologue & Epilogue
   //! \{
 
@@ -998,19 +1731,22 @@ public:
   }
 
   //! Saves LR, allocates `frame_size` bytes with an atomic back-chain update,
-  //! and returns. When `save_mask` or `fpr_mask` is nonzero the nonvolatile
-  //! CR fields and the selected GPRs/FPRs are saved exactly like GCC: LR at
-  //! 16(caller SP), CR (word) at 8(caller SP), FPR f14+k at -(144 - 8*k)
-  //! (caller SP), and GPR r14+k at -(fpr_bytes + 144 - 8*k)(caller SP) -- the
-  //! FP save area sits above the GPR save area at the top of the frame.
+  //! and returns. When any mask is nonzero the nonvolatile CR fields and the
+  //! selected GPRs/FPRs/VRs are saved exactly like GCC: LR at 16(caller SP),
+  //! CR (word) at 8(caller SP), FPR f14+k at -(144 - 8*k), GPR r14+k at
+  //! -(fpr_bytes + 144 - 8*k), and vector v20+k at -(fpr_bytes + gpr_bytes +
+  //! 192 - 16*k), all relative to the caller's SP.
   //!
-  //! Mask bit `k` (k = 0..17) selects GPR r14+k / FPR f14+k. `frame_size` must
-  //! be a multiple of 16 and cover the fixed 32-byte area plus the GPR and FPR
-  //! save areas (e.g. 176 bytes when r14 is saved, 320 when r14 and f14 are).
-  //! Frames larger than 32 KiB use a multi-instruction allocation.
-  ASMJIT_API Error prolog(int32_t frame_size, uint32_t save_mask = 0, uint32_t fpr_mask = 0);
+  //! Mask bit `k` selects GPR r14+k / FPR f14+k (k = 0..17) or vector v20+k
+  //! (k = 0..11). `frame_size` must be a multiple of 16 and cover the fixed
+  //! 32-byte area plus all save areas (176 bytes when r14 is saved, 512 when
+  //! r14, f14, and v20 are). Frames larger than 32 KiB use a multi-instruction
+  //! allocation.
+  ASMJIT_API Error prolog(int32_t frame_size, uint32_t save_mask = 0, uint32_t fpr_mask = 0,
+                          uint32_t vr_mask = 0);
   //! Deallocates the frame, restores what `prolog()` saved, and returns.
-  ASMJIT_API Error epilog(int32_t frame_size, uint32_t save_mask = 0, uint32_t fpr_mask = 0);
+  ASMJIT_API Error epilog(int32_t frame_size, uint32_t save_mask = 0, uint32_t fpr_mask = 0,
+                          uint32_t vr_mask = 0);
 
   //! \}
 

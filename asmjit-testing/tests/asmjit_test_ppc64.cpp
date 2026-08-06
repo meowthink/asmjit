@@ -1232,6 +1232,300 @@ static bool testPrologFpSaves() {
   return checkWords(code, expected, 23);
 }
 
+static bool testVsxMoves() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.mfvsrd(ppc::r3, ppc::vs1);
+  a.mfvsrld(ppc::r3, ppc::vs1);
+  a.mfvsrwz(ppc::r3, ppc::vs1);
+  a.mtvsrd(ppc::vs1, ppc::r3);
+  a.mtvsrdd(ppc::vs1, ppc::r3, ppc::r4);
+  a.mtvsrwa(ppc::vs1, ppc::r3);
+  a.mtvsrws(ppc::vs1, ppc::r3);
+  a.mtvsrwz(ppc::vs1, ppc::r3);
+  a.mfvrd(ppc::r3, ppc::v1);
+  a.mfvrwz(ppc::r3, ppc::v1);
+  a.mtvrd(ppc::v1, ppc::r3);
+  a.mtvrwa(ppc::v1, ppc::r3);
+  a.mtvrwz(ppc::v1, ppc::r3);
+  a.lxsd(ppc::vs1, ppc::ptr(ppc::r3, 8));
+  a.lxssp(ppc::vs1, ppc::ptr(ppc::r3, 8));
+  a.lxsdx(ppc::vs1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lxsspx(ppc::vs1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lxsiwzx(ppc::vs1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lxsiwax(ppc::vs1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lxv(ppc::vs1, ppc::ptr(ppc::r3, 16));
+  a.lxvx(ppc::vs1, ppc::ptr(ppc::r3, ppc::r4));
+  a.stxsd(ppc::vs1, ppc::ptr(ppc::r3, 8));
+  a.stxssp(ppc::vs1, ppc::ptr(ppc::r3, 8));
+  a.stxsdx(ppc::vs1, ppc::ptr(ppc::r3, ppc::r4));
+  a.stxsspx(ppc::vs1, ppc::ptr(ppc::r3, ppc::r4));
+  a.stxsiwx(ppc::vs1, ppc::ptr(ppc::r3, ppc::r4));
+  a.stxv(ppc::vs1, ppc::ptr(ppc::r3, 16));
+  a.stxvx(ppc::vs1, ppc::ptr(ppc::r3, ppc::r4));
+
+  const uint32_t expected[] = {
+    0x7C230066u, 0x7C230266u, 0x7C2300E6u, 0x7C230166u, 0x7C232366u,
+    0x7C2301A6u, 0x7C230326u, 0x7C2301E6u,
+    0x7C230067u, 0x7C2300E7u, 0x7C230167u, 0x7C2301A7u, 0x7C2301E7u,
+    0xE423000Au, 0xE423000Bu, 0x7C232498u, 0x7C232418u,
+    0x7C232018u, 0x7C232098u, 0xF4230011u, 0x7C232218u,
+    0xF423000Au, 0xF423000Bu, 0x7C232598u, 0x7C232518u,
+    0x7C232118u, 0xF4230015u, 0x7C232318u
+  };
+  return checkWords(code, expected, 28);
+}
+
+static bool testVsxArith() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.xsabsdp(ppc::vs1, ppc::vs2);
+  a.xsadddp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xscpsgndp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsdivdp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsmaddadp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsmaddmdp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsmsubadp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsmsubmdp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsmuldp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsnegdp(ppc::vs1, ppc::vs2);
+  a.xsnmsubadp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsnmsubmdp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsnmaddadp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsnmaddmdp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xssqrtdp(ppc::vs1, ppc::vs2);
+  a.xssubdp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsaddsp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsdivsp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsmaddasp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsmaddmsp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsmsubasp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsmsubmsp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsmulsp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsnmsubasp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsnmsubmsp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsnmaddasp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xsnmaddmsp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xssqrtsp(ppc::vs1, ppc::vs2);
+  a.xssubsp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xscmpudp(1, ppc::vs2, ppc::vs3);
+  a.xscmpodp(1, ppc::vs2, ppc::vs3);
+  a.xscmpeqdp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xscmpgedp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xscmpgtdp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xstdivdp(1, ppc::vs2, ppc::vs3);
+  a.xstsqrtdp(1, ppc::vs2);
+
+  const uint32_t expected[] = {
+    0xF0201564u, 0xF0221900u, 0xF0221D80u, 0xF02219C0u,
+    0xF0221908u, 0xF0221948u, 0xF0221988u, 0xF02219C8u,
+    0xF0221980u, 0xF02015E4u, 0xF0221D88u, 0xF0221DC8u,
+    0xF0221D08u, 0xF0221D48u, 0xF020112Cu, 0xF0221940u,
+    0xF0221800u, 0xF02218C0u, 0xF0221808u, 0xF0221848u,
+    0xF0221888u, 0xF02218C8u, 0xF0221880u, 0xF0221C88u,
+    0xF0221CC8u, 0xF0221C08u, 0xF0221C48u, 0xF020102Cu, 0xF0221840u,
+    0xF0821918u, 0xF0821958u, 0xF0221818u, 0xF0221898u,
+    0xF0221858u, 0xF08219E8u, 0xF08011A8u
+  };
+  return checkWords(code, expected, 36);
+}
+
+static bool testVsxRoundLogical() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.xsrdpi(ppc::vs1, ppc::vs2);
+  a.xsrdpic(ppc::vs1, ppc::vs2);
+  a.xsrdpiz(ppc::vs1, ppc::vs2);
+  a.xsrdpip(ppc::vs1, ppc::vs2);
+  a.xsrdpim(ppc::vs1, ppc::vs2);
+  a.xscvdpsp(ppc::vs1, ppc::vs2);
+  a.xscvspdp(ppc::vs1, ppc::vs2);
+  a.xscvdpsxds(ppc::vs1, ppc::vs2);
+  a.xscvdpuxds(ppc::vs1, ppc::vs2);
+  a.xscvsxddp(ppc::vs1, ppc::vs2);
+  a.xscvuxddp(ppc::vs1, ppc::vs2);
+  a.xscvdpsxws(ppc::vs1, ppc::vs2);
+  a.xscvdpuxws(ppc::vs1, ppc::vs2);
+  a.xscvsxdsp(ppc::vs1, ppc::vs2);
+  a.xscvuxdsp(ppc::vs1, ppc::vs2);
+  a.xxlxor(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxlor(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxland(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxlandc(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxlorc(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxlnand(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxlnor(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxleqv(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxsel(ppc::vs1, ppc::vs2, ppc::vs3, ppc::vs4);
+  a.xxperm(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxpermdi(ppc::vs1, ppc::vs2, ppc::vs3, 0);
+  a.xxmrghd(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxmrgld(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xxspltd(ppc::vs1, ppc::vs2, 0);
+  a.xxspltw(ppc::vs1, ppc::vs2, 0);
+  a.xxswapd(ppc::vs1, ppc::vs2);
+
+  const uint32_t expected[] = {
+    0xF0201124u, 0xF02011ACu, 0xF0201164u, 0xF02011A4u, 0xF02011E4u,
+    0xF0201424u, 0xF0201524u, 0xF0201560u, 0xF0201520u, 0xF02015E0u,
+    0xF02015A0u, 0xF0201160u, 0xF0201120u, 0xF02014E0u, 0xF02014A0u,
+    0xF0221CD0u, 0xF0221C90u, 0xF0221C10u, 0xF0221C50u, 0xF0221D50u,
+    0xF0221D90u, 0xF0221D10u, 0xF0221DD0u,
+    0xF0221930u, 0xF02218D0u, 0xF0221850u,
+    0xF0221850u, 0xF0221B50u, 0xF0221050u, 0xF0201290u, 0xF0221250u
+  };
+  return checkWords(code, expected, 31);
+}
+
+
+static bool testVsxFpArithmetic() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.xvadddp(ppc::vs0, ppc::vs1, ppc::vs2);
+  a.xvsubdp(ppc::vs3, ppc::vs4, ppc::vs5);
+  a.xvmuldp(ppc::vs6, ppc::vs7, ppc::vs8);
+  a.xvdivdp(ppc::vs9, ppc::vs10, ppc::vs11);
+  a.xvmaddadp(ppc::vs12, ppc::vs13, ppc::vs14);
+  a.xvmaddmdp(ppc::vs15, ppc::vs16, ppc::vs17);
+  a.xvmsubadp(ppc::vs18, ppc::vs19, ppc::vs20);
+  a.xvmsubmdp(ppc::vs21, ppc::vs22, ppc::vs23);
+  a.xvnmaddadp(ppc::vs24, ppc::vs25, ppc::vs26);
+  a.xvnmaddmdp(ppc::vs27, ppc::vs28, ppc::vs29);
+  a.xvnmsubadp(ppc::vs30, ppc::vs31, ppc::vs0);
+  a.xvnmsubmdp(ppc::vs1, ppc::vs2, ppc::vs3);
+  a.xvaddsp(ppc::vs4, ppc::vs5, ppc::vs6);
+  a.xvsubsp(ppc::vs7, ppc::vs8, ppc::vs9);
+  a.xvmulsp(ppc::vs10, ppc::vs11, ppc::vs12);
+  a.xvdivsp(ppc::vs13, ppc::vs14, ppc::vs15);
+  a.xvmaddasp(ppc::vs16, ppc::vs17, ppc::vs18);
+  a.xvmaddmsp(ppc::vs19, ppc::vs20, ppc::vs21);
+  a.xvmsubasp(ppc::vs22, ppc::vs23, ppc::vs24);
+  a.xvmsubmsp(ppc::vs25, ppc::vs26, ppc::vs27);
+  a.xvnmaddasp(ppc::vs28, ppc::vs29, ppc::vs30);
+  a.xvnmaddmsp(ppc::vs31, ppc::vs0, ppc::vs1);
+  a.xvnmsubasp(ppc::vs2, ppc::vs3, ppc::vs4);
+  a.xvnmsubmsp(ppc::vs5, ppc::vs6, ppc::vs7);
+  a.xvmaxdp(ppc::vs8, ppc::vs9, ppc::vs10);
+  a.xvmindp(ppc::vs11, ppc::vs12, ppc::vs13);
+  a.xvmaxsp(ppc::vs14, ppc::vs15, ppc::vs16);
+  a.xvminsp(ppc::vs17, ppc::vs18, ppc::vs19);
+  a.xvcmpeqdp(ppc::vs2, ppc::vs3, ppc::vs4);
+  a.xvcmpgtdp(ppc::vs3, ppc::vs4, ppc::vs5);
+  a.xvcmpgedp(ppc::vs4, ppc::vs5, ppc::vs6);
+  a.xvcmpeqsp(ppc::vs5, ppc::vs6, ppc::vs7);
+  a.xvcmpgtsp(ppc::vs6, ppc::vs7, ppc::vs8);
+  a.xvcmpgesp(ppc::vs7, ppc::vs8, ppc::vs9);
+  a.xvabsdp(ppc::vs0, ppc::vs1);
+  a.xvabssp(ppc::vs6, ppc::vs7);
+  a.xvnabsdp(ppc::vs2, ppc::vs3);
+  a.xvnabssp(ppc::vs8, ppc::vs9);
+  a.xvnegdp(ppc::vs4, ppc::vs5);
+  a.xvnegsp(ppc::vs10, ppc::vs11);
+  a.xvcpsgndp(ppc::vs12, ppc::vs13, ppc::vs14);
+  a.xvcpsgnsp(ppc::vs15, ppc::vs16, ppc::vs17);
+  a.xvsqrtdp(ppc::vs18, ppc::vs19);
+  a.xvsqrtsp(ppc::vs20, ppc::vs21);
+  a.xvrsqrtedp(ppc::vs22, ppc::vs23);
+  a.xvrsqrtesp(ppc::vs24, ppc::vs25);
+  a.xvcvsxwdp(ppc::vs30, ppc::vs31);
+  a.xvcvuxwdp(ppc::vs0, ppc::vs1);
+  a.xvcvsxwsp(ppc::vs2, ppc::vs3);
+  a.xvcvuxwsp(ppc::vs4, ppc::vs5);
+  a.xvcvdpsxws(ppc::vs6, ppc::vs7);
+  a.xvcvdpuxws(ppc::vs8, ppc::vs9);
+  a.xvcvdpsxds(ppc::vs10, ppc::vs11);
+  a.xvcvdpuxds(ppc::vs12, ppc::vs13);
+  a.xvcvsxddp(ppc::vs14, ppc::vs15);
+  a.xvcvuxddp(ppc::vs16, ppc::vs17);
+  a.xvcvdpsp(ppc::vs18, ppc::vs19);
+  a.xvcvspdp(ppc::vs20, ppc::vs21);
+  // Full vs0..vs63 register range via the XX3 extension bits.
+  a.xvadddp(ppc::vs32, ppc::vs33, ppc::vs34);
+  a.xvabsdp(ppc::vs32, ppc::vs33);
+  a.xvcvsxwdp(ppc::vs32, ppc::vs33);
+  a.xvcmpeqdp(ppc::vs32, ppc::vs33, ppc::vs34);
+
+  const uint32_t expected[] = {
+    0xF0011300u, 0xF0642B40u, 0xF0C74380u, 0xF12A5BC0u,
+    0xF18D7308u, 0xF1F08B48u, 0xF253A388u, 0xF2B6BBC8u,
+    0xF319D708u, 0xF37CEF48u, 0xF3DF0788u, 0xF0221FC8u,
+    0xF0853200u, 0xF0E84A40u, 0xF14B6280u, 0xF1AE7AC0u,
+    0xF2119208u, 0xF274AA48u, 0xF2D7C288u, 0xF33ADAC8u,
+    0xF39DF608u, 0xF3E00E48u, 0xF0432688u, 0xF0A63EC8u,
+    0xF1095700u, 0xF16C6F40u, 0xF1CF8600u, 0xF2329E40u,
+    0xF0432318u, 0xF0642B58u, 0xF0853398u, 0xF0A63A18u,
+    0xF0C74258u, 0xF0E84A98u, 0xF0000F64u, 0xF0C03E64u,
+    0xF0401FA4u, 0xF1004EA4u, 0xF0802FE4u, 0xF1405EE4u,
+    0xF18D7780u, 0xF1F08E80u, 0xF2409B2Cu, 0xF280AA2Cu,
+    0xF2C0BB28u, 0xF300CA28u, 0xF3C0FBE0u, 0xF0000BA0u,
+    0xF0401AE0u, 0xF0802AA0u, 0xF0C03B60u, 0xF1004B20u,
+    0xF1405F60u, 0xF1806F20u, 0xF1C07FE0u, 0xF2008FA0u,
+    0xF2409E24u, 0xF280AF24u, 0xF0011307u, 0xF0000F67u,
+    0xF0000BE3u, 0xF001131Fu
+  };
+  return checkWords(code, expected, 62);
+}
+static bool testVsxMemExt() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  // vs32..vs63 (v0..v31): X-form puts the register high bit at bit 0, the
+  // DQ-form at bit 3.
+  a.lxvx(ppc::vs33, ppc::ptr(ppc::r3, ppc::r4));
+  a.stxvx(ppc::vs33, ppc::ptr(ppc::r3, ppc::r4));
+  a.lxv(ppc::vs33, ppc::ptr(ppc::r3, 0));
+  a.stxv(ppc::vs33, ppc::ptr(ppc::r3, 0));
+
+  const uint32_t expected[] = {
+    0x7C232219u, 0x7C232319u, 0xF4230009u, 0xF423000Du
+  };
+  return checkWords(code, expected, 4);
+}
+static bool testVsxRegExt() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  // XX3/XX2 extension bits (XT[5]/XB[5]/XA[5] at bits 0/1/2): vs32..vs63.
+  a.xxlxor(ppc::vs33, ppc::vs34, ppc::vs35);
+  a.xxlor(ppc::vs33, ppc::vs34, ppc::vs35);
+  a.xxland(ppc::vs33, ppc::vs34, ppc::vs35);
+  a.xxsel(ppc::vs33, ppc::vs34, ppc::vs35, ppc::vs36);
+  a.xscvdpsp(ppc::vs33, ppc::vs34);
+
+  const uint32_t expected[] = {
+    0xF0221CD7u, 0xF0221C97u, 0xF0221C17u, 0xF022193Fu, 0xF0201427u
+  };
+  return checkWords(code, expected, 5);
+}
+
 static bool testAlignEmbed() {
   CodeHolder code;
   if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
@@ -1296,6 +1590,416 @@ static bool testBLongGolden() {
     0x11223344u
   };
   return checkWords(code, expected, 6);
+}
+
+static bool testVmxMemLogical() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.lvx(ppc::v1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lvebx(ppc::v1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lvehx(ppc::v1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lvewx(ppc::v1, ppc::ptr(ppc::r3, ppc::r4));
+  a.lvxl(ppc::v1, ppc::ptr(ppc::r3, ppc::r4));
+  a.stvx(ppc::v1, ppc::ptr(ppc::r3, ppc::r4));
+  a.stvebx(ppc::v1, ppc::ptr(ppc::r3, ppc::r4));
+  a.stvehx(ppc::v1, ppc::ptr(ppc::r3, ppc::r4));
+  a.stvewx(ppc::v1, ppc::ptr(ppc::r3, ppc::r4));
+  a.stvxl(ppc::v1, ppc::ptr(ppc::r3, ppc::r4));
+  a.vand(ppc::v1, ppc::v2, ppc::v3);
+  a.vandc(ppc::v1, ppc::v2, ppc::v3);
+  a.vor(ppc::v1, ppc::v2, ppc::v3);
+  a.vxor(ppc::v1, ppc::v2, ppc::v3);
+  a.vnor(ppc::v1, ppc::v2, ppc::v3);
+  a.veqv(ppc::v1, ppc::v2, ppc::v3);
+  a.vnand(ppc::v1, ppc::v2, ppc::v3);
+  a.vaddubm(ppc::v1, ppc::v2, ppc::v3);
+  a.vadduhm(ppc::v1, ppc::v2, ppc::v3);
+  a.vadduwm(ppc::v1, ppc::v2, ppc::v3);
+  a.vaddudm(ppc::v1, ppc::v2, ppc::v3);
+  a.vaddcuw(ppc::v1, ppc::v2, ppc::v3);
+  a.vsububm(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubuhm(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubuwm(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubudm(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubcuw(ppc::v1, ppc::v2, ppc::v3);
+
+  const uint32_t expected[] = {
+    0x7C2320CEu, 0x7C23200Eu, 0x7C23204Eu, 0x7C23208Eu, 0x7C2322CEu,
+    0x7C2321CEu, 0x7C23210Eu, 0x7C23214Eu, 0x7C23218Eu, 0x7C2323CEu,
+    0x10221C04u, 0x10221C44u, 0x10221C84u, 0x10221CC4u, 0x10221D04u,
+    0x10221E84u, 0x10221D84u,
+    0x10221800u, 0x10221840u, 0x10221880u, 0x102218C0u, 0x10221980u,
+    0x10221C00u, 0x10221C40u, 0x10221C80u, 0x10221CC0u, 0x10221D80u
+  };
+  return checkWords(code, expected, 27);
+}
+
+static bool testVmxShiftCmpMinMax() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.vsl(ppc::v1, ppc::v2, ppc::v3);
+  a.vsr(ppc::v1, ppc::v2, ppc::v3);
+  a.vsld(ppc::v1, ppc::v2, ppc::v3);
+  a.vsrd(ppc::v1, ppc::v2, ppc::v3);
+  a.vsrad(ppc::v1, ppc::v2, ppc::v3);
+  a.vslw(ppc::v1, ppc::v2, ppc::v3);
+  a.vsrw(ppc::v1, ppc::v2, ppc::v3);
+  a.vsraw(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpequb(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpequh(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpequw(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpequd(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpgtsb(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpgtsh(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpgtsw(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpgtsd(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpgtub(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpgtuh(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpgtuw(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpgtud(ppc::v1, ppc::v2, ppc::v3);
+  a.vminub(ppc::v1, ppc::v2, ppc::v3);
+  a.vminuh(ppc::v1, ppc::v2, ppc::v3);
+  a.vminuw(ppc::v1, ppc::v2, ppc::v3);
+  a.vminsb(ppc::v1, ppc::v2, ppc::v3);
+  a.vminsh(ppc::v1, ppc::v2, ppc::v3);
+  a.vminsw(ppc::v1, ppc::v2, ppc::v3);
+  a.vmaxub(ppc::v1, ppc::v2, ppc::v3);
+  a.vmaxuh(ppc::v1, ppc::v2, ppc::v3);
+  a.vmaxuw(ppc::v1, ppc::v2, ppc::v3);
+  a.vmaxsb(ppc::v1, ppc::v2, ppc::v3);
+  a.vmaxsh(ppc::v1, ppc::v2, ppc::v3);
+  a.vmaxsw(ppc::v1, ppc::v2, ppc::v3);
+
+  const uint32_t expected[] = {
+    0x102219C4u, 0x10221AC4u, 0x10221DC4u, 0x10221EC4u, 0x10221BC4u,
+    0x10221984u, 0x10221A84u, 0x10221B84u,
+    0x10221806u, 0x10221846u, 0x10221886u, 0x102218C7u,
+    0x10221B06u, 0x10221B46u, 0x10221B86u, 0x10221BC7u,
+    0x10221A06u, 0x10221A46u, 0x10221A86u, 0x10221AC7u,
+    0x10221A02u, 0x10221A42u, 0x10221A82u, 0x10221B02u, 0x10221B42u, 0x10221B82u,
+    0x10221802u, 0x10221842u, 0x10221882u, 0x10221902u, 0x10221942u, 0x10221982u
+  };
+  return checkWords(code, expected, 32);
+}
+
+static bool testVmxPackPermute() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.vpkuhum(ppc::v1, ppc::v2, ppc::v3);
+  a.vpkuwum(ppc::v1, ppc::v2, ppc::v3);
+  a.vpkuhus(ppc::v1, ppc::v2, ppc::v3);
+  a.vpkuwus(ppc::v1, ppc::v2, ppc::v3);
+  a.vpkshss(ppc::v1, ppc::v2, ppc::v3);
+  a.vpkswss(ppc::v1, ppc::v2, ppc::v3);
+  a.vpkshus(ppc::v1, ppc::v2, ppc::v3);
+  a.vpkswus(ppc::v1, ppc::v2, ppc::v3);
+  a.vupkhsb(ppc::v1, ppc::v2);
+  a.vupkhsh(ppc::v1, ppc::v2);
+  a.vupklsb(ppc::v1, ppc::v2);
+  a.vupklsh(ppc::v1, ppc::v2);
+  a.vmrghb(ppc::v1, ppc::v2, ppc::v3);
+  a.vmrghh(ppc::v1, ppc::v2, ppc::v3);
+  a.vmrghw(ppc::v1, ppc::v2, ppc::v3);
+  a.vmrglb(ppc::v1, ppc::v2, ppc::v3);
+  a.vmrglh(ppc::v1, ppc::v2, ppc::v3);
+  a.vmrglw(ppc::v1, ppc::v2, ppc::v3);
+  a.vspltb(ppc::v1, ppc::v2, 3);
+  a.vsplth(ppc::v1, ppc::v2, 3);
+  a.vspltw(ppc::v1, ppc::v2, 3);
+  a.vspltisb(ppc::v1, 3);
+  a.vspltish(ppc::v1, 3);
+  a.vspltisw(ppc::v1, 3);
+  a.vperm(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vsel(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vsldoi(ppc::v1, ppc::v2, ppc::v3, 4);
+  a.vclzb(ppc::v1, ppc::v2);
+  a.vclzh(ppc::v1, ppc::v2);
+  a.vclzw(ppc::v1, ppc::v2);
+  a.vclzd(ppc::v1, ppc::v2);
+  a.vpopcntb(ppc::v1, ppc::v2);
+  a.vpopcnth(ppc::v1, ppc::v2);
+  a.vpopcntw(ppc::v1, ppc::v2);
+  a.vpopcntd(ppc::v1, ppc::v2);
+  a.vmulouw(ppc::v1, ppc::v2, ppc::v3);
+  a.vmuluwm(ppc::v1, ppc::v2, ppc::v3);
+
+  const uint32_t expected[] = {
+    0x1022180Eu, 0x1022184Eu, 0x1022188Eu, 0x102218CEu, 0x1022198Eu, 0x102219CEu,
+    0x1022190Eu, 0x1022194Eu,
+    0x1020120Eu, 0x1020124Eu, 0x1020128Eu, 0x102012CEu,
+    0x1022180Cu, 0x1022184Cu, 0x1022188Cu, 0x1022190Cu, 0x1022194Cu, 0x1022198Cu,
+    0x1023120Cu, 0x1023124Cu, 0x1023128Cu, 0x1023030Cu, 0x1023034Cu, 0x1023038Cu,
+    0x1022192Bu, 0x1022192Au, 0x1022192Cu,
+    0x10201702u, 0x10201742u, 0x10201782u, 0x102017C2u,
+    0x10201703u, 0x10201743u, 0x10201783u, 0x102017C3u,
+    0x10221888u, 0x10221889u
+  };
+  return checkWords(code, expected, 37);
+}
+
+static bool testVmxSaturateAvgSum() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.vaddsbs(ppc::v1, ppc::v2, ppc::v3);
+  a.vaddshs(ppc::v1, ppc::v2, ppc::v3);
+  a.vaddsws(ppc::v1, ppc::v2, ppc::v3);
+  a.vaddubs(ppc::v1, ppc::v2, ppc::v3);
+  a.vadduhs(ppc::v1, ppc::v2, ppc::v3);
+  a.vadduws(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubsbs(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubshs(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubsws(ppc::v1, ppc::v2, ppc::v3);
+  a.vsububs(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubuhs(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubuws(ppc::v1, ppc::v2, ppc::v3);
+  a.vavgub(ppc::v1, ppc::v2, ppc::v3);
+  a.vavguh(ppc::v1, ppc::v2, ppc::v3);
+  a.vavguw(ppc::v1, ppc::v2, ppc::v3);
+  a.vavgsb(ppc::v1, ppc::v2, ppc::v3);
+  a.vavgsh(ppc::v1, ppc::v2, ppc::v3);
+  a.vavgsw(ppc::v1, ppc::v2, ppc::v3);
+  a.vsum4sbs(ppc::v1, ppc::v2, ppc::v3);
+  a.vsum4shs(ppc::v1, ppc::v2, ppc::v3);
+  a.vsum4ubs(ppc::v1, ppc::v2, ppc::v3);
+  a.vsum2sws(ppc::v1, ppc::v2, ppc::v3);
+  a.vsumsws(ppc::v1, ppc::v2, ppc::v3);
+  a.vmuleub(ppc::v1, ppc::v2, ppc::v3);
+  a.vmuleuh(ppc::v1, ppc::v2, ppc::v3);
+  a.vmuleuw(ppc::v1, ppc::v2, ppc::v3);
+  a.vmulesb(ppc::v1, ppc::v2, ppc::v3);
+  a.vmulesh(ppc::v1, ppc::v2, ppc::v3);
+  a.vmulesw(ppc::v1, ppc::v2, ppc::v3);
+  a.vmuloub(ppc::v1, ppc::v2, ppc::v3);
+  a.vmulouh(ppc::v1, ppc::v2, ppc::v3);
+  a.vmulosb(ppc::v1, ppc::v2, ppc::v3);
+  a.vmulosh(ppc::v1, ppc::v2, ppc::v3);
+  a.vmulosw(ppc::v1, ppc::v2, ppc::v3);
+  a.vslb(ppc::v1, ppc::v2, ppc::v3);
+  a.vsrb(ppc::v1, ppc::v2, ppc::v3);
+
+  const uint32_t expected[] = {
+    0x10221B00u, 0x10221B40u, 0x10221B80u, 0x10221A00u, 0x10221A40u, 0x10221A80u,
+    0x10221F00u, 0x10221F40u, 0x10221F80u, 0x10221E00u, 0x10221E40u, 0x10221E80u,
+    0x10221C02u, 0x10221C42u, 0x10221C82u, 0x10221D02u, 0x10221D42u, 0x10221D82u,
+    0x10221F08u, 0x10221E48u, 0x10221E08u, 0x10221E88u, 0x10221F88u,
+    0x10221A08u, 0x10221A48u, 0x10221A88u, 0x10221B08u, 0x10221B48u, 0x10221B88u,
+    0x10221808u, 0x10221848u, 0x10221908u, 0x10221948u, 0x10221988u,
+    0x10221904u, 0x10221A04u
+  };
+  return checkWords(code, expected, 36);
+}
+
+static bool testVmxQwordRotate() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.vaddcuq(ppc::v1, ppc::v2, ppc::v3);
+  a.vadduqm(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubcuq(ppc::v1, ppc::v2, ppc::v3);
+  a.vsubuqm(ppc::v1, ppc::v2, ppc::v3);
+  a.vabsdub(ppc::v1, ppc::v2, ppc::v3);
+  a.vabsduh(ppc::v1, ppc::v2, ppc::v3);
+  a.vabsduw(ppc::v1, ppc::v2, ppc::v3);
+  a.vbpermd(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpneb(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpneh(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpnew(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpnezb(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpnezh(ppc::v1, ppc::v2, ppc::v3);
+  a.vcmpnezw(ppc::v1, ppc::v2, ppc::v3);
+  a.vmaxsd(ppc::v1, ppc::v2, ppc::v3);
+  a.vmaxud(ppc::v1, ppc::v2, ppc::v3);
+  a.vminsd(ppc::v1, ppc::v2, ppc::v3);
+  a.vminud(ppc::v1, ppc::v2, ppc::v3);
+  a.vmul10cuq(ppc::v1, ppc::v2);
+  a.vmul10euq(ppc::v1, ppc::v2, ppc::v3);
+  a.vmul10ecuq(ppc::v1, ppc::v2, ppc::v3);
+  a.vmul10uq(ppc::v1, ppc::v2);
+  a.vpkudum(ppc::v1, ppc::v2, ppc::v3);
+  a.vpkudus(ppc::v1, ppc::v2, ppc::v3);
+  a.vpksdss(ppc::v1, ppc::v2, ppc::v3);
+  a.vpksdus(ppc::v1, ppc::v2, ppc::v3);
+  a.vmrgew(ppc::v1, ppc::v2, ppc::v3);
+  a.vmrgow(ppc::v1, ppc::v2, ppc::v3);
+  a.vrlw(ppc::v1, ppc::v2, ppc::v3);
+  a.vrlh(ppc::v1, ppc::v2, ppc::v3);
+  a.vrlb(ppc::v1, ppc::v2, ppc::v3);
+  a.vrld(ppc::v1, ppc::v2, ppc::v3);
+  a.vrlwmi(ppc::v1, ppc::v2, ppc::v3);
+  a.vrlwnm(ppc::v1, ppc::v2, ppc::v3);
+  a.vrldmi(ppc::v1, ppc::v2, ppc::v3);
+  a.vrldnm(ppc::v1, ppc::v2, ppc::v3);
+  a.vslh(ppc::v1, ppc::v2, ppc::v3);
+  a.vsrh(ppc::v1, ppc::v2, ppc::v3);
+  a.vslo(ppc::v1, ppc::v2, ppc::v3);
+  a.vsro(ppc::v1, ppc::v2, ppc::v3);
+  a.vslv(ppc::v1, ppc::v2, ppc::v3);
+  a.vsrv(ppc::v1, ppc::v2, ppc::v3);
+
+  const uint32_t expected[] = {
+    0x10221940u, 0x10221900u, 0x10221D40u, 0x10221D00u,
+    0x10221C03u, 0x10221C43u, 0x10221C83u, 0x10221DCCu,
+    0x10221807u, 0x10221847u, 0x10221887u, 0x10221907u, 0x10221947u, 0x10221987u,
+    0x102219C2u, 0x102218C2u, 0x10221BC2u, 0x10221AC2u,
+    0x10220001u, 0x10221A41u, 0x10221841u, 0x10220201u,
+    0x10221C4Eu, 0x10221CCEu, 0x10221DCEu, 0x10221D4Eu,
+    0x10221F8Cu, 0x10221E8Cu,
+    0x10221884u, 0x10221844u, 0x10221804u, 0x102218C4u,
+    0x10221885u, 0x10221985u, 0x102218C5u, 0x102219C5u,
+    0x10221944u, 0x10221A44u, 0x10221C0Cu, 0x10221C4Cu, 0x10221F44u, 0x10221F04u
+  };
+  return checkWords(code, expected, 42);
+}
+
+static bool testVmxVaForm() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.vaddeuqm(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vaddecuq(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vsubeuqm(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vsubecuq(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vmladduhm(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vmhaddshs(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vmhraddshs(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vmsummbm(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vmsumshm(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vmsumshs(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vmsumubm(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vmsumudm(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vmsumuhm(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vmsumuhs(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vpermr(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vpermxor(ppc::v1, ppc::v2, ppc::v3, ppc::v4);
+  a.vctzb(ppc::v1, ppc::v2);
+  a.vctzh(ppc::v1, ppc::v2);
+  a.vctzw(ppc::v1, ppc::v2);
+  a.vctzd(ppc::v1, ppc::v2);
+  a.vextractub(ppc::v1, ppc::v2, 3);
+  a.vextractuh(ppc::v1, ppc::v2, 3);
+  a.vextractuw(ppc::v1, ppc::v2, 3);
+  a.vextractd(ppc::v1, ppc::v2, 3);
+  a.vextsb2w(ppc::v1, ppc::v2);
+  a.vextsh2w(ppc::v1, ppc::v2);
+  a.vextsw2d(ppc::v1, ppc::v2);
+  a.vextsb2d(ppc::v1, ppc::v2);
+  a.vextsh2d(ppc::v1, ppc::v2);
+  a.vnegw(ppc::v1, ppc::v2);
+  a.vnegd(ppc::v1, ppc::v2);
+  a.vprtybd(ppc::v1, ppc::v2);
+  a.vprtybw(ppc::v1, ppc::v2);
+  a.vprtybq(ppc::v1, ppc::v2);
+  a.vupkhsw(ppc::v1, ppc::v2);
+  a.vupklsw(ppc::v1, ppc::v2);
+  a.vgbbd(ppc::v1, ppc::v2);
+  a.vpmsumb(ppc::v1, ppc::v2, ppc::v3);
+  a.vpmsumh(ppc::v1, ppc::v2, ppc::v3);
+  a.vpmsumw(ppc::v1, ppc::v2, ppc::v3);
+  a.vpmsumd(ppc::v1, ppc::v2, ppc::v3);
+  a.vpkpx(ppc::v1, ppc::v2, ppc::v3);
+  a.vupkhpx(ppc::v1, ppc::v2);
+  a.vupklpx(ppc::v1, ppc::v2);
+
+  const uint32_t expected[] = {
+    0x1022193Cu, 0x1022193Du, 0x1022193Eu, 0x1022193Fu,
+    0x10221922u, 0x10221920u, 0x10221921u,
+    0x10221925u, 0x10221928u, 0x10221929u, 0x10221924u, 0x10221923u, 0x10221926u, 0x10221927u,
+    0x1022193Bu, 0x1022192Du,
+    0x103C1602u, 0x103D1602u, 0x103E1602u, 0x103F1602u,
+    0x1023120Du, 0x1023124Du, 0x1023128Du, 0x102312CDu,
+    0x10301602u, 0x10311602u, 0x103A1602u, 0x10381602u, 0x10391602u,
+    0x10261602u, 0x10271602u, 0x10291602u, 0x10281602u, 0x102A1602u,
+    0x1020164Eu, 0x102016CEu, 0x1020150Cu,
+    0x10221C08u, 0x10221C48u, 0x10221C88u, 0x10221CC8u,
+    0x10221B0Eu, 0x1020134Eu, 0x102013CEu
+  };
+  return checkWords(code, expected, 44);
+}
+
+static bool testVmxExtractInsert() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.vclzlsbb(ppc::r3, ppc::v2);
+  a.vctzlsbb(ppc::r3, ppc::v2);
+  a.vextublx(ppc::r1, ppc::r2, ppc::v3);
+  a.vextubrx(ppc::r1, ppc::r2, ppc::v3);
+  a.vextuhlx(ppc::r1, ppc::r2, ppc::v3);
+  a.vextuhrx(ppc::r1, ppc::r2, ppc::v3);
+  a.vextuwlx(ppc::r1, ppc::r2, ppc::v3);
+  a.vextuwrx(ppc::r1, ppc::r2, ppc::v3);
+  a.vinsertb(ppc::v1, ppc::v2, 3);
+  a.vinserth(ppc::v1, ppc::v2, 3);
+  a.vinsertw(ppc::v1, ppc::v2, 3);
+  a.vinsertd(ppc::v1, ppc::v2, 3);
+
+  const uint32_t expected[] = {
+    0x10601602u, 0x10611602u,
+    0x10221E0Du, 0x10221F0Du, 0x10221E4Du, 0x10221F4Du, 0x10221E8Du, 0x10221F8Du,
+    0x1023130Du, 0x1023134Du, 0x1023138Du, 0x102313CDu
+  };
+  return checkWords(code, expected, 12);
+}
+
+static bool testPrologVrSaves() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.prolog(512, 0x7, 0x7, 0x3); // save r14..r16, f14..f16, v20..v21
+  a.epilog(512, 0x7, 0x7, 0x3);
+
+  const uint32_t expected[] = {
+    0x7C0802A6u, 0xF8010010u, 0x7D600026u, 0x91610008u,
+    0xD9C1FF70u, 0xD9E1FF78u, 0xDA01FF80u,
+    0xF9C1FEE0u, 0xF9E1FEE8u, 0xFA01FEF0u,
+    0x3800FE20u, 0x7E8101CEu, // li r0,-480; stvx v20, r1, r0
+    0x3800FE30u, 0x7EA101CEu, // li r0,-464; stvx v21, r1, r0
+    0xF821FE01u, // stdu r1, -512(r1)
+    0x38210200u, // addi r1, r1, 512
+    0xEA01FEF0u, 0xE9E1FEE8u, 0xE9C1FEE0u,
+    0xCA01FF80u, 0xC9E1FF78u, 0xC9C1FF70u,
+    0x3800FE30u, 0x7EA100CEu, // li r0,-464; lvx v21, r1, r0
+    0x3800FE20u, 0x7E8100CEu, // li r0,-480; lvx v20, r1, r0
+    0x81610008u, 0x7D638120u,
+    0xE8010010u, 0x7C0803A6u, 0x4E800020u
+  };
+  return checkWords(code, expected, 31);
 }
 
 #if ASMJIT_ARCH_PPC == 64
@@ -1629,8 +2333,9 @@ static bool testExecutionFpNonvolatile() {
   return keep * r == keep * expected && r == expected;
 }
 
-static bool testExecutionFpClassCheck() {
-  using Fn = int64_t (*)(double);
+static bool testExecutionVsx() {
+  // exercises GPR<->VSX bit moves only, which qemu executes correctly.
+  using Fn = int64_t (*)(int64_t);
 
   ppc::Runtime rt;
   CodeHolder code;
@@ -1640,15 +2345,11 @@ static bool testExecutionFpClassCheck() {
 
   ppc::Assembler a(&code);
   const int32_t frame_size = a.minimum_frame_size();
-  Label bail = a.new_label();
-  Label done = a.new_label();
   a.prolog(frame_size);
-  a.bailIfFPSpecial(ppc::f1, bail);
-  a.li(ppc::r3, 1);
-  a.b(done);
-  a.bind(bail);
-  a.li(ppc::r3, 0);
-  a.bind(done);
+
+  a.mtvsrd(ppc::vs1, ppc::r3);
+  a.mfvsrd(ppc::r3, ppc::vs1);
+
   a.epilog(frame_size);
 
   Fn fn = nullptr;
@@ -1656,18 +2357,65 @@ static bool testExecutionFpClassCheck() {
     return false;
   }
 
-  auto bitsToDouble = [](uint64_t bits) {
-    double d;
-    std::memcpy(&d, &bits, 8);
-    return d;
-  };
+  if (fn(0x1122334455667788ll) != 0x1122334455667788ll) {
+    return false;
+  }
 
-  return fn(1.0) == 1 && fn(0.0) == 1 && fn(-2.5) == 1 &&
-         fn(bitsToDouble(0x0000000000000001ull)) == 0 && // denormal
-         fn(bitsToDouble(0x7FF0000000000000ull)) == 0 && // +inf
-         fn(bitsToDouble(0xFFF0000000000000ull)) == 0 && // -inf
-         fn(bitsToDouble(0x7FF8000000000000ull)) == 0;   // NaN
+  // Word zero-extension round-trip.
+  using Fn2 = int64_t (*)(int64_t);
+  CodeHolder code2;
+  if (code2.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+  ppc::Assembler b(&code2);
+  b.prolog(frame_size);
+  b.mtvsrwz(ppc::vs1, ppc::r3);
+  b.mfvsrwz(ppc::r3, ppc::vs1);
+  b.epilog(frame_size);
+  Fn2 fn2 = nullptr;
+  if (rt.add(&fn2, &code2) != Error::kOk) {
+    return false;
+  }
+
+  return fn2(0x1122334455667788ll) == 0x55667788ll;
 }
+
+
+#if ASMJIT_ARCH_PPC == 64
+static bool testExecutionVsxFp() {
+  using Fn = uint64_t (*)(uint64_t, uint64_t);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = a.minimum_frame_size();
+  a.prolog(frame_size);
+  a.mtvsrd(ppc::vs33, ppc::r3); // v1 = a
+  a.mtvsrd(ppc::vs34, ppc::r4); // v2 = b
+  a.xvadddp(ppc::vs35, ppc::vs33, ppc::vs34);
+  a.xvmuldp(ppc::vs36, ppc::vs35, ppc::vs33);
+  a.mfvsrd(ppc::r3, ppc::vs36);
+  a.epilog(frame_size);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  double va = 1.5, vb = 2.25;
+  uint64_t ab, bb;
+  std::memcpy(&ab, &va, 8);
+  std::memcpy(&bb, &vb, 8);
+  uint64_t got = fn(ab, bb);
+  double result;
+  std::memcpy(&result, &got, 8);
+  return result == (va + vb) * va;
+}
+#endif
 
 static bool testExecutionCallHelper() {
 #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
@@ -1763,6 +2511,79 @@ static bool testExecutionBLong() {
 
   return fnA(5) == 105;
 }
+
+static bool testExecutionVmx() {
+  using Fn = int64_t (*)(int64_t, int64_t);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = a.minimum_frame_size() + 320 + 320 + 16; // v20 save area
+  a.prolog(frame_size, 0, 0, 0x1); // save v20
+  a.mtvsrd(ppc::vs33, ppc::r3); // v1 = a
+  a.mtvsrd(ppc::vs34, ppc::r4); // v2 = b
+  a.vaddudm(ppc::v3, ppc::v1, ppc::v2);
+  a.mfvsrd(ppc::r3, ppc::vs35); // v3 low doubleword
+  a.mtvsrd(ppc::vs52, ppc::r3); // clobber v20 with the result
+  a.epilog(frame_size, 0, 0, 0x1);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  const uint64_t pattern = 0x1122334455667788ull;
+  asm volatile("mtvsrd 52,%0" : : "r"(pattern));
+  const int64_t r = fn(5, 7);
+  uint64_t back = 0;
+  asm volatile("mfvsrd %0,52" : "=r"(back));
+  return r == 12 && back == pattern;
+}
+
+static bool testExecutionVmxExt() {
+  using Fn = uint64_t (*)(uint64_t, uint64_t);
+
+  ppc::Runtime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  const int32_t frame_size = a.minimum_frame_size() + 320 + 320 + 16; // v20 save area
+  a.prolog(frame_size, 0, 0, 0x1); // save v20
+  a.mtvsrdd(ppc::vs33, ppc::r3, ppc::r3); // v1 = {a, a}
+  a.mtvsrdd(ppc::vs34, ppc::r4, ppc::r4); // v2 = {b, b}
+  a.vaddsbs(ppc::v3, ppc::v1, ppc::v2); // 0x7f+0x7f saturates to 0x7f
+  a.mfvsrd(ppc::r5, ppc::vs35);
+  a.vaddubs(ppc::v3, ppc::v1, ppc::v2); // 0x7f+0x7f = 0xfe
+  a.mfvsrd(ppc::r6, ppc::vs35);
+  a.vavgub(ppc::v3, ppc::v1, ppc::v2); // avg(0x7f, 0x7f) = 0x7f
+  a.mfvsrd(ppc::r7, ppc::vs35);
+  a.vctzb(ppc::v3, ppc::v1); // ctz(0x7f) = 0
+  a.mfvsrd(ppc::r8, ppc::vs35);
+  a.xor_(ppc::r3, ppc::r5, ppc::r6);
+  a.xor_(ppc::r3, ppc::r3, ppc::r7);
+  a.xor_(ppc::r3, ppc::r3, ppc::r8);
+  a.mtvsrd(ppc::vs52, ppc::r3); // clobber v20 with the result
+  a.epilog(frame_size, 0, 0, 0x1);
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+  const uint64_t pattern = 0x1122334455667788ull;
+  asm volatile("mtvsrd 52,%0" : : "r"(pattern));
+  const uint64_t r = fn(0x7F7F7F7F7F7F7F7Full, 0x7F7F7F7F7F7F7F7Full);
+  uint64_t back = 0;
+  asm volatile("mfvsrd %0,52" : "=r"(back));
+  return r == 0xFEFEFEFEFEFEFEFEull && back == pattern;
+}
 #endif
 
 int main() {
@@ -1800,11 +2621,25 @@ int main() {
   ok &= testFpMemory();
   ok &= testFpArithmetic();
   ok &= testFpConvertFpscr();
-  ok &= testBailFpSpecial();
   ok &= testPrologFpSaves();
+  ok &= testBailFpSpecial();
+  ok &= testVsxMoves();
+  ok &= testVsxArith();
+  ok &= testVsxRoundLogical();
+  ok &= testVsxFpArithmetic();
+  ok &= testVsxMemExt();
+  ok &= testVsxRegExt();
   ok &= testAlignEmbed();
   ok &= testCallHelperGolden();
   ok &= testBLongGolden();
+  ok &= testVmxMemLogical();
+  ok &= testVmxShiftCmpMinMax();
+  ok &= testVmxPackPermute();
+  ok &= testVmxSaturateAvgSum();
+  ok &= testVmxQwordRotate();
+  ok &= testVmxVaForm();
+  ok &= testVmxExtractInsert();
+  ok &= testPrologVrSaves();
 #if ASMJIT_ARCH_PPC == 64
   ok &= testExecution();
   ok &= testExecutionGccHelper();
@@ -1814,10 +2649,15 @@ int main() {
   ok &= testExecutionFp();
   ok &= testExecutionFpCompare();
   ok &= testExecutionFpNonvolatile();
-  ok &= testExecutionFpClassCheck();
+  ok &= testExecutionVsx();
+#if ASMJIT_ARCH_PPC == 64
+  ok &= testExecutionVsxFp();
+#endif
   ok &= testExecutionCallHelper();
   ok &= testExecutionTailCall();
   ok &= testExecutionBLong();
+  ok &= testExecutionVmx();
+  ok &= testExecutionVmxExt();
 #endif
 
   if (!ok) {

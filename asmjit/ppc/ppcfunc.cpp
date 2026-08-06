@@ -12,6 +12,21 @@ ASMJIT_BEGIN_SUB_NAMESPACE(ppc)
 
 namespace FuncInternal {
 
+static inline RegType reg_type_from_vec_type_id(TypeId type_id) noexcept {
+  if (TypeUtils::is_vec32(type_id)) {
+    return RegType::kVec32;
+  }
+  else if (TypeUtils::is_vec64(type_id)) {
+    return RegType::kVec64;
+  }
+  else if (TypeUtils::is_vec128(type_id)) {
+    return RegType::kVec128;
+  }
+  else {
+    return RegType::kNone;
+  }
+}
+
 static inline bool should_treat_as_cdecl(CallConvId call_conv_id) noexcept {
   return call_conv_id == CallConvId::kCDecl ||
          call_conv_id == CallConvId::kStdCall ||
@@ -63,6 +78,13 @@ ASMJIT_FAVOR_SIZE Error init_func_detail(FuncDetail& func, const FuncSignature& 
       else if (TypeUtils::is_float(type_id)) {
         func._rets[value_index].init_reg(RegType::kVec64, 1, type_id);
       }
+      else if (TypeUtils::is_vec(type_id)) {
+        RegType reg_type = reg_type_from_vec_type_id(type_id);
+        if (reg_type == RegType::kNone) {
+          return make_error(Error::kInvalidRegType);
+        }
+        func._rets[value_index].init_reg(reg_type, 2, type_id);
+      }
       else {
         return make_error(Error::kInvalidRegType);
       }
@@ -71,6 +93,7 @@ ASMJIT_FAVOR_SIZE Error init_func_detail(FuncDetail& func, const FuncSignature& 
 
   uint32_t gp_pos = 0;
   uint32_t fp_pos = 0;
+  uint32_t vec_pos = 0;
   for (uint32_t i = 0; i < func.arg_count(); i++) {
     FuncValue& arg = func._args[i][0];
     TypeId type_id = arg.type_id();
@@ -104,6 +127,26 @@ ASMJIT_FAVOR_SIZE Error init_func_detail(FuncDetail& func, const FuncSignature& 
       else {
         arg.assign_stack_offset(int32_t(stack_offset));
         stack_offset += 8;
+      }
+      continue;
+    }
+
+    if (TypeUtils::is_vec(type_id)) {
+      RegType reg_type = reg_type_from_vec_type_id(type_id);
+      if (reg_type == RegType::kNone) {
+        return make_error(Error::kInvalidRegType);
+      }
+
+      // ELFv2/ELFv1: vector args are passed in v2..v13.
+      if (vec_pos < 12) {
+        uint32_t reg_id = vec_pos + 2;
+        arg.assign_reg_data(reg_type, reg_id);
+        func.add_used_regs(RegGroup::kVec, Support::bit_mask<RegMask>(reg_id));
+        vec_pos++;
+      }
+      else {
+        arg.assign_stack_offset(int32_t(stack_offset));
+        stack_offset += 16;
       }
       continue;
     }
