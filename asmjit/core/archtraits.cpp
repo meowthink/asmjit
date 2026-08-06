@@ -91,6 +91,10 @@ ASMJIT_VARAPI const ArchTraits _arch_traits[uint32_t(Arch::kMaxValue) + 1] = {
 
   // MIPS32/MIPS64
   no_arch_traits,
+  no_arch_traits,
+
+  // PPC64
+  no_arch_traits,
   no_arch_traits
 };
 

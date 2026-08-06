@@ -1,0 +1,258 @@
+// This file is part of AsmJit project <https://asmjit.com>
+//
+// SPDX-License-Identifier: Zlib
+
+// Minimal PPC64 backend encoding test.
+
+#include <asmjit/ppc.h>
+
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+
+using namespace asmjit;
+
+static bool checkWords(const CodeHolder& code, const uint32_t* expected, size_t count) {
+  const Section* text = code.text_section();
+  const uint8_t* data = text->buffer().data();
+  size_t size = text->buffer().size();
+
+  if (size != count * 4u) {
+    std::printf("size mismatch: got %zu bytes, expected %zu\n", size, count * 4u);
+    return false;
+  }
+
+  for (size_t i = 0; i < count; i++) {
+    uint32_t word = code.environment().is_little_endian()
+                      ? Support::loadu_u32_le(data + i * 4u)
+                      : Support::loadu_u32_be(data + i * 4u);
+    if (word != expected[i]) {
+      std::printf("word[%zu] mismatch: got 0x%08X, expected 0x%08X\n", i, word, expected[i]);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool testBasic() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.li(ppc::r3, 1);
+  a.addi(ppc::r3, ppc::r3, 2);
+  a.blr();
+
+  const uint32_t expected[] = {
+    0x38600001u, // li r3, 1
+    0x38630002u, // addi r3, r3, 2
+    0x4E800020u  // blr
+  };
+  return checkWords(code, expected, 3);
+}
+
+static bool testBigEndian() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_BE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.li(ppc::r3, 1);
+  a.addi(ppc::r3, ppc::r3, 2);
+  a.blr();
+
+  const uint32_t expected[] = {
+    0x38600001u, // li r3, 1
+    0x38630002u, // addi r3, r3, 2
+    0x4E800020u  // blr
+  };
+  return checkWords(code, expected, 3);
+}
+
+static bool testBigEndianBranches() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_BE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  Label skip = a.new_label();
+  a.li(ppc::r3, 1);
+  a.beq(skip);
+  a.li(ppc::r3, 2);
+  a.bind(skip);
+  a.blr();
+
+  const uint32_t expected[] = {
+    0x38600001u, // li r3, 1
+    0x41820008u, // beq +8
+    0x38600002u, // li r3, 2
+    0x4E800020u  // blr
+  };
+  return checkWords(code, expected, 4);
+}
+
+static bool testBranches() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+
+  Label skip = a.new_label();
+  a.li(ppc::r3, 1);
+  a.beq(skip);
+  a.li(ppc::r3, 2);
+  a.bind(skip);
+  a.blr();
+
+  const uint32_t expected[] = {
+    0x38600001u, // li r3, 1
+    0x41820008u, // beq +8 (from offset 4 to offset 12)
+    0x38600002u, // li r3, 2
+    0x4E800020u  // blr
+  };
+  return checkWords(code, expected, 4);
+}
+
+static bool testBackwardBranch() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+
+  Label loop = a.new_label();
+  a.bind(loop);
+  a.li(ppc::r3, 1);
+  a.bne(loop);
+  a.b(loop);  // unconditional backward branch (26-bit displacement field)
+  a.blr();
+
+  const uint32_t expected[] = {
+    0x38600001u, // li r3, 1
+    0x4082FFFCu, // bne -4 (from offset 4 back to offset 0)
+    0x4BFFFFF8u, // b -8 (from offset 8 back to offset 0)
+    0x4E800020u  // blr
+  };
+  return checkWords(code, expected, 4);
+}
+
+static bool testLoadImm64() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.loadImm64(ppc::r3, 0x123456789ABCDEF0ull);
+
+  const uint32_t expected[] = {
+    0x3C601234u, // lis r3, 0x1234
+    0x60635678u, // ori r3, r3, 0x5678
+    0x786307C6u, // sldi r3, r3, 32
+    0x64639ABCu, // oris r3, r3, 0x9ABC
+    0x6063DEF0u  // ori r3, r3, 0xDEF0
+  };
+  return checkWords(code, expected, 5);
+}
+
+static bool testMemory() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.ld(ppc::r3, ppc::ptr(ppc::r4, 8));
+  a.std(ppc::r5, ppc::ptr(ppc::r4, 16));
+  a.lwz(ppc::r3, ppc::ptr(ppc::r4, -4));
+  a.stw(ppc::r5, ppc::ptr(ppc::r4, 8));
+  a.lbz(ppc::r3, ppc::ptr(ppc::r4, 1));
+  a.stb(ppc::r5, ppc::ptr(ppc::r4, 2));
+  a.lhz(ppc::r3, ppc::ptr(ppc::r4, 6));
+  a.sth(ppc::r5, ppc::ptr(ppc::r4, 10));
+
+  const uint32_t expected[] = {
+    0xE8640008u, // ld r3, 8(r4)
+    0xF8A40010u, // std r5, 16(r4)
+    0x8064FFFCu, // lwz r3, -4(r4)
+    0x90A40008u, // stw r5, 8(r4)
+    0x88640001u, // lbz r3, 1(r4)
+    0x98A40002u, // stb r5, 2(r4)
+    0xA0640006u, // lhz r3, 6(r4)
+    0xB0A4000Au  // sth r5, 10(r4)
+  };
+  return checkWords(code, expected, 8);
+}
+
+#if ASMJIT_ARCH_PPC == 64
+static bool testExecution() {
+  using Fn = uint64_t (*)(uint64_t);
+
+  JitRuntime rt;
+  CodeHolder code;
+  if (code.init(rt.environment()) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  Label loop = a.new_label();
+  a.li(ppc::r4, 5);
+  a.bind(loop);
+  a.addi(ppc::r3, ppc::r3, 1);
+  a.addi(ppc::r4, ppc::r4, -1);
+  a.cmpdi(ppc::r4, 0);
+  a.bne(loop);
+  a.blr();
+
+  Fn fn = nullptr;
+  if (rt.add(&fn, &code) != Error::kOk) {
+    return false;
+  }
+
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+  ppc::FunctionDescriptor descriptor = { func_as_ptr(fn), nullptr, nullptr };
+  Fn callable = (Fn)&descriptor;
+#else
+  Fn callable = fn;
+#endif
+
+  return callable(37) == 42;
+}
+#endif
+
+int main() {
+  bool ok = true;
+  ok &= testBasic();
+  ok &= testBigEndian();
+  ok &= testBigEndianBranches();
+  ok &= testBranches();
+  ok &= testBackwardBranch();
+  ok &= testLoadImm64();
+  ok &= testMemory();
+#if ASMJIT_ARCH_PPC == 64
+  ok &= testExecution();
+#endif
+
+  if (!ok) {
+    std::printf("ppc64 assembler tests FAILED\n");
+    return 1;
+  }
+
+  std::printf("ppc64 assembler tests passed\n");
+  return 0;
+}

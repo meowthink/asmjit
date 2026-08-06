@@ -237,6 +237,11 @@
   //! Defined to either 0, 32, or 64 depending on whether the target CPU is 32-bit or 64-bit LoongArch.
   #define ASMJIT_ARCH_LA __detected_at_runtime__
 
+  //! \def ASMJIT_ARCH_PPC
+  //!
+  //! Defined to either 0, 32, or 64 depending on whether the target CPU is 32-bit or 64-bit PowerPC.
+  #define ASMJIT_ARCH_PPC __detected_at_runtime__
+
   //! \def ASMJIT_ARCH_BITS
   //!
   //! Defined to either 32 or 64 depending on the target.
@@ -289,7 +294,15 @@
     #define ASMJIT_ARCH_LA 0
   #endif
 
-  #define ASMJIT_ARCH_BITS (ASMJIT_ARCH_X86 | ASMJIT_ARCH_ARM | ASMJIT_ARCH_MIPS | ASMJIT_ARCH_RISCV | ASMJIT_ARCH_LA)
+  #if defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__) || defined(_ARCH_PPC64)
+    #define ASMJIT_ARCH_PPC 64
+  #elif defined(__powerpc__) || defined(__ppc__) || defined(__PPC__) || defined(_ARCH_PPC)
+    #define ASMJIT_ARCH_PPC 32
+  #else
+    #define ASMJIT_ARCH_PPC 0
+  #endif
+
+  #define ASMJIT_ARCH_BITS (ASMJIT_ARCH_X86 | ASMJIT_ARCH_ARM | ASMJIT_ARCH_MIPS | ASMJIT_ARCH_RISCV | ASMJIT_ARCH_LA | ASMJIT_ARCH_PPC)
   #if ASMJIT_ARCH_BITS == 0 && !defined(_DOXYGEN)
     #undef ASMJIT_ARCH_BITS
     #if defined(__LP64__) || defined(_LP64)
@@ -306,6 +319,10 @@
 
     #if ASMJIT_ARCH_ARM != 64 && !defined(ASMJIT_NO_AARCH64)
       #define ASMJIT_NO_AARCH64
+    #endif
+
+    #if ASMJIT_ARCH_PPC != 64 && !defined(ASMJIT_NO_PPC)
+      #define ASMJIT_NO_PPC
     #endif
   #endif
 

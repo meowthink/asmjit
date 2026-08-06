@@ -57,8 +57,18 @@ enum class Arch : uint8_t {
   //! 64-bit MIPS ISA in (big endian).
   kMIPS64_BE = 16,
 
+  //! 32-bit PowerPC ISA (big endian).
+  kPPC32_BE = 17,
+  //! 64-bit PowerPC ISA (big endian).
+  kPPC64_BE = 18,
+
+  //! 32-bit PowerPC ISA (little endian).
+  kPPC32_LE = 19,
+  //! 64-bit PowerPC ISA (little endian).
+  kPPC64_LE = 20,
+
   //! Maximum value of `Arch`.
-  kMaxValue = kMIPS64_BE,
+  kMaxValue = kPPC64_LE,
 
   //! Mask used by 32-bit ISAs (odd are 32-bit, even are 64-bit).
   k32BitMask = 0x01,
@@ -87,6 +97,11 @@ enum class Arch : uint8_t {
     ASMJIT_ARCH_MIPS == 32 && Support::ByteOrder::kNative == Support::ByteOrder::kBE ? kMIPS32_BE :
     ASMJIT_ARCH_MIPS == 64 && Support::ByteOrder::kNative == Support::ByteOrder::kLE ? kMIPS64_LE :
     ASMJIT_ARCH_MIPS == 64 && Support::ByteOrder::kNative == Support::ByteOrder::kBE ? kMIPS64_BE :
+
+    ASMJIT_ARCH_PPC == 32 && Support::ByteOrder::kNative == Support::ByteOrder::kLE ? kPPC32_LE :
+    ASMJIT_ARCH_PPC == 32 && Support::ByteOrder::kNative == Support::ByteOrder::kBE ? kPPC32_BE :
+    ASMJIT_ARCH_PPC == 64 && Support::ByteOrder::kNative == Support::ByteOrder::kLE ? kPPC64_LE :
+    ASMJIT_ARCH_PPC == 64 && Support::ByteOrder::kNative == Support::ByteOrder::kBE ? kPPC64_BE :
 
     kUnknown
 #endif

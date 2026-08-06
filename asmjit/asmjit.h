@@ -32,4 +32,8 @@
   #include <asmjit/x86.h>
 #endif
 
+#ifndef ASMJIT_NO_PPC
+  #include <asmjit/ppc.h>
+#endif
+
 #endif // ASMJIT_ASMJIT_H_INCLUDED

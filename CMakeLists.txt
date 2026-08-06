@@ -71,6 +71,7 @@ option(ASMJIT_NO_ABI_NAMESPACE "Disable the use of inline ABI namespace {asmjit:
 option(ASMJIT_NO_SHM_OPEN      "Disable the use of shm_open() (some platforms have better options)" OFF)
 option(ASMJIT_NO_X86           "Disable X86/X64 backend" OFF)
 option(ASMJIT_NO_AARCH64       "Disable AArch64 backend" OFF)
+option(ASMJIT_NO_PPC           "Disable PPC64 backend" OFF)
 option(ASMJIT_NO_FOREIGN       "Disable all foreign backends (enables only a backend that matches the target)" OFF)
 option(ASMJIT_NO_JIT           "Disable VirtMem, JitAllocator, and JitRuntime at build time" OFF)
 option(ASMJIT_NO_TEXT          "Disable textual representation of instructions, enums, cpu features, ..." OFF)
@@ -251,6 +252,10 @@ set(ASMJIT_SRC
   asmjit/arm/a64rapass.cpp
   asmjit/arm/a64rapass_p.h
 
+  asmjit/ppc.h
+  asmjit/ppc/ppcassembler.cpp
+  asmjit/ppc/ppcassembler.h
+
   asmjit/x86.h
   asmjit/x86/x86archtraits_p.h
   asmjit/x86/x86assembler.cpp
@@ -299,7 +304,7 @@ include(GNUInstallDirs)
 # Detects target architecture - since the code doesn't run it works also for cross-compilation.
 function(asmjit_detect_target_arch out)
   set(${out} "unknown" PARENT_SCOPE)
-  foreach(target_arch "X86_64" "AARCH64" "X86" "AARCH32")
+  foreach(target_arch "X86_64" "AARCH64" "PPC64" "X86" "AARCH32")
     check_cxx_source_compiles("
       #if defined(_M_X64) || defined(__x86_64__)
         static int target_arch_is_X86_64() { return 1; }
@@ -309,6 +314,8 @@ function(asmjit_detect_target_arch out)
         static int target_arch_is_AARCH64() { return 1; }
       #elif defined(_M_ARM) || defined(_M_ARMT) || defined(__arm__) || defined(__thumb__) || defined(__thumb2__)
         static int target_arch_is_AARCH32() { return 1; }
+      #elif defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__) || defined(_ARCH_PPC64)
+        static int target_arch_is_PPC64() { return 1; }
       #endif
       int main(void) { return target_arch_is_${target_arch}(); }" "${out}_${target_arch}")
     if (${${out}_${target_arch}})
@@ -509,6 +516,7 @@ endif()
 
 foreach(build_option ASMJIT_NO_X86
                      ASMJIT_NO_AARCH64
+                     ASMJIT_NO_PPC
                      ASMJIT_NO_FOREIGN
                      ASMJIT_NO_ABI_NAMESPACE
                      ASMJIT_NO_JIT
@@ -624,6 +632,15 @@ else()
       CFLAGS     ${ASMJIT_PRIVATE_CFLAGS}
       CFLAGS_DBG ${ASMJIT_PRIVATE_CFLAGS_DBG}
       CFLAGS_REL ${ASMJIT_PRIVATE_CFLAGS_REL})
+
+    if (NOT ASMJIT_NO_PPC)
+      asmjit_add_target(asmjit_test_ppc64 TEST
+        SOURCES    asmjit-testing/tests/asmjit_test_ppc64.cpp
+        LIBRARIES  asmjit::asmjit
+        CFLAGS     ${ASMJIT_PRIVATE_CFLAGS}
+        CFLAGS_DBG ${ASMJIT_PRIVATE_CFLAGS_DBG}
+        CFLAGS_REL ${ASMJIT_PRIVATE_CFLAGS_REL})
+    endif()
 
     foreach(app asmjit_test_environment asmjit_test_emitters asmjit_test_x86_sections)
       asmjit_add_target(${app} TEST
