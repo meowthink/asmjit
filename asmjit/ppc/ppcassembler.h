@@ -211,8 +211,22 @@ public:
 
   //! `add rt, ra, rb`.
   ASMJIT_API Error add(Gp rt, Gp ra, Gp rb);
+  //! `addc rt, ra, rb` (add with carry).
+  ASMJIT_API Error addc(Gp rt, Gp ra, Gp rb);
+  //! `addze rt, ra` (add zero-extended).
+  ASMJIT_API Error addze(Gp rt, Gp ra);
+  //! `addme rt, ra` (add minus one extended).
+  ASMJIT_API Error addme(Gp rt, Gp ra);
   //! `subf rt, ra, rb` (rt = rb - ra).
   ASMJIT_API Error subf(Gp rt, Gp ra, Gp rb);
+  //! `subfc rt, ra, rb` (subtract from with carry).
+  ASMJIT_API Error subfc(Gp rt, Gp ra, Gp rb);
+  //! `subfze rt, ra`.
+  ASMJIT_API Error subfze(Gp rt, Gp ra);
+  //! `subfme rt, ra`.
+  ASMJIT_API Error subfme(Gp rt, Gp ra);
+  //! `neg rt, ra`.
+  ASMJIT_API Error neg(Gp rt, Gp ra);
   //! `and ra, rs, rb`.
   ASMJIT_API Error and_(Gp ra, Gp rs, Gp rb);
   //! `or ra, rs, rb`.
@@ -233,6 +247,34 @@ public:
   ASMJIT_API Error mullw(Gp rt, Gp ra, Gp rb);
   //! `mulhdu rt, ra, rb`.
   ASMJIT_API Error mulhdu(Gp rt, Gp ra, Gp rb);
+  //! `mulhd rt, ra, rb`.
+  ASMJIT_API Error mulhd(Gp rt, Gp ra, Gp rb);
+  //! `mulhw rt, ra, rb`.
+  ASMJIT_API Error mulhw(Gp rt, Gp ra, Gp rb);
+  //! `mulhwu rt, ra, rb`.
+  ASMJIT_API Error mulhwu(Gp rt, Gp ra, Gp rb);
+  //! `mulli rt, ra, simm`.
+  ASMJIT_API Error mulli(Gp rt, Gp ra, int16_t simm);
+  //! `divd rt, ra, rb`.
+  ASMJIT_API Error divd(Gp rt, Gp ra, Gp rb);
+  //! `divw rt, ra, rb`.
+  ASMJIT_API Error divw(Gp rt, Gp ra, Gp rb);
+  //! `divdu rt, ra, rb`.
+  ASMJIT_API Error divdu(Gp rt, Gp ra, Gp rb);
+  //! `divwu rt, ra, rb`.
+  ASMJIT_API Error divwu(Gp rt, Gp ra, Gp rb);
+  //! `srawi ra, rs, sh`.
+  ASMJIT_API Error srawi(Gp ra, Gp rs, uint8_t sh);
+  //! `srdi ra, rs, sh`.
+  ASMJIT_API Error srdi(Gp ra, Gp rs, uint8_t sh);
+  //! `andi. ra, rs, uimm`.
+  ASMJIT_API Error andi_(Gp ra, Gp rs, uint16_t uimm);
+  //! `andis. ra, rs, uimm`.
+  ASMJIT_API Error andis_(Gp ra, Gp rs, uint16_t uimm);
+  //! `xori ra, rs, uimm`.
+  ASMJIT_API Error xori(Gp ra, Gp rs, uint16_t uimm);
+  //! `xoris ra, rs, uimm`.
+  ASMJIT_API Error xoris(Gp ra, Gp rs, uint16_t uimm);
 
   //! \}
 
@@ -342,6 +384,28 @@ public:
   ASMJIT_API Error rlwinm(Gp ra, Gp rs, uint8_t sh, uint8_t mb, uint8_t me);
   //! `rlwimi ra, rs, sh, mb, me`.
   ASMJIT_API Error rlwimi(Gp ra, Gp rs, uint8_t sh, uint8_t mb, uint8_t me);
+  //! `rldimi ra, rs, sh, mb`.
+  ASMJIT_API Error rldimi(Gp ra, Gp rs, uint8_t sh, uint8_t mb);
+
+  //! \}
+
+  //! \name Mask Idioms
+  //! \{
+
+  //! `clrldi ra, rs, n` (clear left doubleword immediate).
+  ASMJIT_API Error clrldi(Gp ra, Gp rs, uint8_t n);
+  //! `clrrdi ra, rs, n` (clear right doubleword immediate).
+  ASMJIT_API Error clrrdi(Gp ra, Gp rs, uint8_t n);
+  //! `rotldi ra, rs, n` (rotate left doubleword immediate).
+  ASMJIT_API Error rotldi(Gp ra, Gp rs, uint8_t n);
+  //! `rotrdi ra, rs, n` (rotate right doubleword immediate).
+  ASMJIT_API Error rotrdi(Gp ra, Gp rs, uint8_t n);
+  //! `extldi ra, rs, n, b` (extract and left justify).
+  ASMJIT_API Error extldi(Gp ra, Gp rs, uint8_t n, uint8_t b);
+  //! `extrdi ra, rs, n, b` (extract and right justify).
+  ASMJIT_API Error extrdi(Gp ra, Gp rs, uint8_t n, uint8_t b);
+  //! `insrdi ra, rs, n, b` (insert right).
+  ASMJIT_API Error insrdi(Gp ra, Gp rs, uint8_t n, uint8_t b);
 
   //! \}
 

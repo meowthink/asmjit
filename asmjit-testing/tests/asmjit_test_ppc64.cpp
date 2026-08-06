@@ -359,6 +359,90 @@ static bool testRotates() {
   return checkWords(code, expected, 5);
 }
 
+static bool testIntegerMath() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.neg(ppc::r3, ppc::r4);
+  a.addc(ppc::r3, ppc::r4, ppc::r5);
+  a.addze(ppc::r3, ppc::r4);
+  a.addme(ppc::r3, ppc::r4);
+  a.subfc(ppc::r3, ppc::r4, ppc::r5);
+  a.subfze(ppc::r3, ppc::r4);
+  a.subfme(ppc::r3, ppc::r4);
+  a.divd(ppc::r3, ppc::r4, ppc::r5);
+  a.divw(ppc::r3, ppc::r4, ppc::r5);
+  a.divdu(ppc::r3, ppc::r4, ppc::r5);
+  a.divwu(ppc::r3, ppc::r4, ppc::r5);
+  a.mulli(ppc::r3, ppc::r4, -7);
+  a.srawi(ppc::r3, ppc::r4, 5);
+  a.srdi(ppc::r3, ppc::r4, 5);
+  a.andi_(ppc::r3, ppc::r4, 123);
+  a.andis_(ppc::r3, ppc::r4, 456);
+  a.xori(ppc::r3, ppc::r4, 789);
+  a.xoris(ppc::r3, ppc::r4, 789);
+  a.mulhd(ppc::r3, ppc::r4, ppc::r5);
+  a.mulhw(ppc::r3, ppc::r4, ppc::r5);
+  a.mulhwu(ppc::r3, ppc::r4, ppc::r5);
+
+  const uint32_t expected[] = {
+    0x7C6400D0u, // neg r3, r4
+    0x7C642814u, // addc r3, r4, r5
+    0x7C640194u, // addze r3, r4
+    0x7C6401D4u, // addme r3, r4
+    0x7C642810u, // subfc r3, r4, r5
+    0x7C640190u, // subfze r3, r4
+    0x7C6401D0u, // subfme r3, r4
+    0x7C642BD2u, // divd r3, r4, r5
+    0x7C642BD6u, // divw r3, r4, r5
+    0x7C642B92u, // divdu r3, r4, r5
+    0x7C642B96u, // divwu r3, r4, r5
+    0x1C64FFF9u, // mulli r3, r4, -7
+    0x7C832E70u, // srawi r3, r4, 5
+    0x7883D942u, // srdi r3, r4, 5
+    0x7083007Bu, // andi. r3, r4, 123
+    0x748301C8u, // andis. r3, r4, 456
+    0x68830315u, // xori r3, r4, 789
+    0x6C830315u, // xoris r3, r4, 789
+    0x7C642892u, // mulhd r3, r4, r5
+    0x7C642896u, // mulhw r3, r4, r5
+    0x7C642816u  // mulhwu r3, r4, r5
+  };
+  return checkWords(code, expected, 21);
+}
+
+static bool testMaskIdioms() {
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk) {
+    return false;
+  }
+
+  ppc::Assembler a(&code);
+  a.clrldi(ppc::r3, ppc::r4, 6);
+  a.clrrdi(ppc::r3, ppc::r4, 6);
+  a.rotldi(ppc::r3, ppc::r4, 5);
+  a.rotrdi(ppc::r3, ppc::r4, 5);
+  a.extldi(ppc::r3, ppc::r4, 6, 7);
+  a.extrdi(ppc::r3, ppc::r4, 6, 7);
+  a.insrdi(ppc::r3, ppc::r4, 6, 7);
+
+  const uint32_t expected[] = {
+    0x78830180u, // clrldi r3, r4, 6
+    0x78830664u, // clrrdi r3, r4, 6
+    0x78832800u, // rotldi r3, r4, 5
+    0x7883D802u, // rotrdi r3, r4, 5
+    0x78833944u, // extldi r3, r4, 6, 7
+    0x78836EA0u, // extrdi r3, r4, 6, 7
+    0x788399CEu  // insrdi r3, r4, 6, 7
+  };
+  return checkWords(code, expected, 7);
+}
+
 static bool testBarriersAndCounts() {
   CodeHolder code;
   if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
@@ -485,6 +569,8 @@ int main() {
   ok &= testMemoryExt();
   ok &= testLlSc();
   ok &= testRotates();
+  ok &= testIntegerMath();
+  ok &= testMaskIdioms();
   ok &= testBarriersAndCounts();
 #if ASMJIT_ARCH_PPC == 64
   ok &= testExecution();
