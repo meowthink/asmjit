@@ -84,6 +84,30 @@ Error Assembler::emit32(uint32_t word) {
   return Error::kOk;
 }
 
+// XO-form arithmetic: rt = f(ra, rb), with optional OE (overflow) and Rc (record) fields.
+Error Assembler::emitXO(uint32_t xo, Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) |
+                (xo << 1) | (oe ? (1u << 10) : 0u) | (rc ? 1u : 0u));
+}
+
+// X-form logical/shift: ra = f(rs, rb), with optional Rc (record) field.
+Error Assembler::emitXLog(uint32_t xo, Gp ra, Gp rs, Gp rb, bool rc) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) |
+                (xo << 1) | (rc ? 1u : 0u));
+}
+
+// X-form count/extend: ra = f(rs), with optional Rc (record) field.
+Error Assembler::emitXRs(uint32_t xo, Gp ra, Gp rs, bool rc) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (xo << 1) |
+                (rc ? 1u : 0u));
+}
+
+// XS-form shift: ra = f(rs, sh), with optional Rc (record) field.
+Error Assembler::emitXSh(uint32_t xo, Gp ra, Gp rs, uint8_t sh, bool rc) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | ((sh & 0x1Fu) << 11) |
+                (xo << 1) | (rc ? 1u : 0u));
+}
+
 Error Assembler::li(Gp rt, int16_t simm) {
   return addi(rt, r0, simm);
 }
@@ -121,124 +145,238 @@ Error Assembler::loadImm64(Gp rt, uint64_t imm) {
   return ori(rt, rt, uint16_t(imm));
 }
 
-Error Assembler::add(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (266u << 1));
+Error Assembler::add(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(266u, rt, ra, rb, oe, rc);
 }
 
-Error Assembler::addc(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (10u << 1));
+Error Assembler::addc(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(10u, rt, ra, rb, oe, rc);
 }
 
-Error Assembler::addze(Gp rt, Gp ra) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (202u << 1));
+Error Assembler::addze(Gp rt, Gp ra, bool oe, bool rc) {
+  return emitXO(202u, rt, ra, Gp { 0 }, oe, rc);
 }
 
-Error Assembler::addme(Gp rt, Gp ra) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (234u << 1));
+Error Assembler::addme(Gp rt, Gp ra, bool oe, bool rc) {
+  return emitXO(234u, rt, ra, Gp { 0 }, oe, rc);
 }
 
-Error Assembler::subf(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (40u << 1));
+Error Assembler::subf(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(40u, rt, ra, rb, oe, rc);
 }
 
-Error Assembler::subfc(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (8u << 1));
+Error Assembler::subfc(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(8u, rt, ra, rb, oe, rc);
 }
 
-Error Assembler::subfze(Gp rt, Gp ra) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (200u << 1));
+Error Assembler::subfze(Gp rt, Gp ra, bool oe, bool rc) {
+  return emitXO(200u, rt, ra, Gp { 0 }, oe, rc);
 }
 
-Error Assembler::subfme(Gp rt, Gp ra) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (232u << 1));
+Error Assembler::subfme(Gp rt, Gp ra, bool oe, bool rc) {
+  return emitXO(232u, rt, ra, Gp { 0 }, oe, rc);
 }
 
-Error Assembler::neg(Gp rt, Gp ra) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (104u << 1));
+Error Assembler::neg(Gp rt, Gp ra, bool oe, bool rc) {
+  return emitXO(104u, rt, ra, Gp { 0 }, oe, rc);
 }
 
-Error Assembler::and_(Gp ra, Gp rs, Gp rb) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (28u << 1));
+Error Assembler::and_(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(28u, ra, rs, rb, rc);
 }
 
-Error Assembler::or_(Gp ra, Gp rs, Gp rb) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (444u << 1));
+Error Assembler::andc(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(60u, ra, rs, rb, rc);
 }
 
-Error Assembler::xor_(Gp ra, Gp rs, Gp rb) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (316u << 1));
+Error Assembler::or_(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(444u, ra, rs, rb, rc);
 }
 
-Error Assembler::sld(Gp ra, Gp rs, Gp rb) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (27u << 1));
+Error Assembler::orc(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(412u, ra, rs, rb, rc);
 }
 
-Error Assembler::srd(Gp ra, Gp rs, Gp rb) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (539u << 1));
+Error Assembler::xor_(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(316u, ra, rs, rb, rc);
 }
 
-Error Assembler::srad(Gp ra, Gp rs, Gp rb) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (794u << 1));
+Error Assembler::nand(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(476u, ra, rs, rb, rc);
 }
 
-Error Assembler::extsw(Gp ra, Gp rs) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (986u << 1));
+Error Assembler::nor(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(124u, ra, rs, rb, rc);
 }
 
-Error Assembler::extsb(Gp ra, Gp rs) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (954u << 1));
+Error Assembler::eqv(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(284u, ra, rs, rb, rc);
 }
 
-Error Assembler::extsh(Gp ra, Gp rs) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (922u << 1));
+Error Assembler::sld(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(27u, ra, rs, rb, rc);
 }
 
-Error Assembler::mulld(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (233u << 1));
+Error Assembler::srd(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(539u, ra, rs, rb, rc);
 }
 
-Error Assembler::mullw(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (235u << 1));
+Error Assembler::srad(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(794u, ra, rs, rb, rc);
 }
 
-Error Assembler::mulhdu(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (9u << 1));
+Error Assembler::slw(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(24u, ra, rs, rb, rc);
 }
 
-Error Assembler::mulhd(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (73u << 1));
+Error Assembler::srw(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(536u, ra, rs, rb, rc);
 }
 
-Error Assembler::mulhw(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (75u << 1));
+Error Assembler::sraw(Gp ra, Gp rs, Gp rb, bool rc) {
+  return emitXLog(792u, ra, rs, rb, rc);
 }
 
-Error Assembler::mulhwu(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (11u << 1));
+Error Assembler::extsw(Gp ra, Gp rs, bool rc) {
+  return emitXRs(986u, ra, rs, rc);
+}
+
+Error Assembler::extsb(Gp ra, Gp rs, bool rc) {
+  return emitXRs(954u, ra, rs, rc);
+}
+
+Error Assembler::extsh(Gp ra, Gp rs, bool rc) {
+  return emitXRs(922u, ra, rs, rc);
+}
+
+Error Assembler::extswsli(Gp ra, Gp rs, uint8_t sh, bool rc) {
+  return emitXSh(890u, ra, rs, sh, rc);
+}
+
+Error Assembler::addic(Gp rt, Gp ra, int16_t simm, bool rc) {
+  return emit32(((rc ? 13u : 12u) << 26) | (rt.id() << 21) | (ra.id() << 16) | uint16_t(simm));
+}
+
+Error Assembler::subfic(Gp rt, Gp ra, int16_t simm) {
+  return emit32((8u << 26) | (rt.id() << 21) | (ra.id() << 16) | uint16_t(simm));
+}
+
+Error Assembler::adde(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(138u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::subfe(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(136u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::addex(Gp rt, Gp ra, Gp rb, uint32_t cy) {
+  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) |
+                ((cy & 3u) << 9) | (170u << 1));
+}
+
+Error Assembler::addpcis(Gp rt, int16_t d) {
+  const uint16_t imm = uint16_t(d);
+  return emit32((19u << 26) | (rt.id() << 21) | (((imm >> 1) & 0x1Fu) << 16) |
+                (((imm >> 6) & 0x3FFu) << 6) | (2u << 1) | (imm & 1u));
+}
+
+Error Assembler::mulld(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(233u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::mullw(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(235u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::mulhdu(Gp rt, Gp ra, Gp rb, bool rc) {
+  return emitXO(9u, rt, ra, rb, false, rc);
+}
+
+Error Assembler::mulhd(Gp rt, Gp ra, Gp rb, bool rc) {
+  return emitXO(73u, rt, ra, rb, false, rc);
+}
+
+Error Assembler::mulhw(Gp rt, Gp ra, Gp rb, bool rc) {
+  return emitXO(75u, rt, ra, rb, false, rc);
+}
+
+Error Assembler::mulhwu(Gp rt, Gp ra, Gp rb, bool rc) {
+  return emitXO(11u, rt, ra, rb, false, rc);
 }
 
 Error Assembler::mulli(Gp rt, Gp ra, int16_t simm) {
   return emit32((7u << 26) | (rt.id() << 21) | (ra.id() << 16) | (uint16_t(simm)));
 }
 
-Error Assembler::divd(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (489u << 1));
+Error Assembler::maddhd(Gp rt, Gp ra, Gp rb, Gp rc0) {
+  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) |
+                (rc0.id() << 6) | 48u);
 }
 
-Error Assembler::divw(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (491u << 1));
+Error Assembler::maddhdu(Gp rt, Gp ra, Gp rb, Gp rc0) {
+  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) |
+                (rc0.id() << 6) | 49u);
 }
 
-Error Assembler::divdu(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (457u << 1));
+Error Assembler::maddld(Gp rt, Gp ra, Gp rb, Gp rc0) {
+  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) |
+                (rc0.id() << 6) | 51u);
 }
 
-Error Assembler::divwu(Gp rt, Gp ra, Gp rb) {
-  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (459u << 1));
+Error Assembler::divd(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(489u, rt, ra, rb, oe, rc);
 }
 
-Error Assembler::srawi(Gp ra, Gp rs, uint8_t sh) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | ((sh & 0x1Fu) << 11) | (824u << 1));
+Error Assembler::divw(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(491u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::divdu(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(457u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::divwu(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(459u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::divde(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(425u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::divdeu(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(393u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::divwe(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(427u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::divweu(Gp rt, Gp ra, Gp rb, bool oe, bool rc) {
+  return emitXO(395u, rt, ra, rb, oe, rc);
+}
+
+Error Assembler::modsd(Gp rt, Gp ra, Gp rb) {
+  return emitXO(777u, rt, ra, rb, false, false);
+}
+
+Error Assembler::modud(Gp rt, Gp ra, Gp rb) {
+  return emitXO(265u, rt, ra, rb, false, false);
+}
+
+Error Assembler::modsw(Gp rt, Gp ra, Gp rb) {
+  return emitXO(779u, rt, ra, rb, false, false);
+}
+
+Error Assembler::moduw(Gp rt, Gp ra, Gp rb) {
+  return emitXO(267u, rt, ra, rb, false, false);
+}
+
+Error Assembler::darn(Gp rt, uint8_t l) {
+  return emit32((31u << 26) | (rt.id() << 21) | ((l & 0x1Fu) << 16) | (755u << 1));
+}
+
+Error Assembler::srawi(Gp ra, Gp rs, uint8_t sh, bool rc) {
+  return emitXSh(824u, ra, rs, sh, rc);
 }
 
 Error Assembler::srdi(Gp ra, Gp rs, uint8_t sh) {
@@ -261,16 +399,81 @@ Error Assembler::xoris(Gp ra, Gp rs, uint16_t uimm) {
   return emit32((27u << 26) | (rs.id() << 21) | (ra.id() << 16) | uimm);
 }
 
-Error Assembler::cmpd(Gp ra, Gp rb) {
-  return emit32((31u << 26) | (1u << 21) | (ra.id() << 16) | (rb.id() << 11));
+Error Assembler::cmpd(Gp ra, Gp rb, uint32_t bf) {
+  return emit32((31u << 26) | (bf << 23) | (1u << 21) | (ra.id() << 16) | (rb.id() << 11));
 }
 
-Error Assembler::cmpld(Gp ra, Gp rb) {
-  return emit32((31u << 26) | (1u << 21) | (ra.id() << 16) | (rb.id() << 11) | (32u << 1));
+Error Assembler::cmpld(Gp ra, Gp rb, uint32_t bf) {
+  return emit32((31u << 26) | (bf << 23) | (1u << 21) | (ra.id() << 16) | (rb.id() << 11) | (32u << 1));
 }
 
-Error Assembler::cmpdi(Gp ra, int16_t simm) {
-  return emit32((11u << 26) | (1u << 21) | (ra.id() << 16) | (uint16_t(simm)));
+Error Assembler::cmpdi(Gp ra, int16_t simm, uint32_t bf) {
+  return emit32((11u << 26) | (bf << 23) | (1u << 21) | (ra.id() << 16) | (uint16_t(simm)));
+}
+
+Error Assembler::cmp(uint32_t bf, uint32_t l, Gp ra, Gp rb) {
+  return emit32((31u << 26) | (bf << 23) | (l << 21) | (ra.id() << 16) | (rb.id() << 11));
+}
+
+Error Assembler::cmpl(uint32_t bf, uint32_t l, Gp ra, Gp rb) {
+  return emit32((31u << 26) | (bf << 23) | (l << 21) | (ra.id() << 16) | (rb.id() << 11) | (32u << 1));
+}
+
+Error Assembler::cmpi(uint32_t bf, uint32_t l, Gp ra, int16_t si) {
+  return emit32((11u << 26) | (bf << 23) | (l << 21) | (ra.id() << 16) | uint16_t(si));
+}
+
+Error Assembler::cmpli(uint32_t bf, uint32_t l, Gp ra, uint16_t ui) {
+  return emit32((10u << 26) | (bf << 23) | (l << 21) | (ra.id() << 16) | ui);
+}
+
+Error Assembler::cmpldi(uint32_t bf, Gp ra, uint16_t ui) {
+  return emit32((10u << 26) | (bf << 23) | (1u << 21) | (ra.id() << 16) | ui);
+}
+
+Error Assembler::cmpb(Gp ra, Gp rs, Gp rb) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (508u << 1));
+}
+
+Error Assembler::cmpeqb(uint32_t bf, Gp ra, Gp rb) {
+  return emit32((31u << 26) | (bf << 23) | (ra.id() << 16) | (rb.id() << 11) | (224u << 1));
+}
+
+Error Assembler::cmprb(uint32_t bf, uint32_t l, Gp ra, Gp rb) {
+  return emit32((31u << 26) | (bf << 23) | (l << 21) | (ra.id() << 16) | (rb.id() << 11) | (192u << 1));
+}
+
+Error Assembler::tw(uint32_t to, Gp ra, Gp rb) {
+  return emit32((31u << 26) | (to << 21) | (ra.id() << 16) | (rb.id() << 11) | (4u << 1));
+}
+
+Error Assembler::twi(uint32_t to, Gp ra, int16_t si) {
+  return emit32((3u << 26) | (to << 21) | (ra.id() << 16) | uint16_t(si));
+}
+
+Error Assembler::td(uint32_t to, Gp ra, Gp rb) {
+  return emit32((31u << 26) | (to << 21) | (ra.id() << 16) | (rb.id() << 11) | (68u << 1));
+}
+
+Error Assembler::tdi(uint32_t to, Gp ra, int16_t si) {
+  return emit32((2u << 26) | (to << 21) | (ra.id() << 16) | uint16_t(si));
+}
+
+Error Assembler::isel(Gp rt, Gp ra, Gp rb, uint32_t bc) {
+  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | (rb.id() << 11) |
+                ((bc & 0x1Fu) << 6) | (15u << 1));
+}
+
+Error Assembler::isellt(Gp rt, Gp ra, Gp rb) {
+  return isel(rt, ra, rb, 0);
+}
+
+Error Assembler::iseleq(Gp rt, Gp ra, Gp rb) {
+  return isel(rt, ra, rb, 2);
+}
+
+Error Assembler::iselgt(Gp rt, Gp ra, Gp rb) {
+  return isel(rt, ra, rb, 1);
 }
 
 Error Assembler::beq(const Label& label) {
@@ -313,6 +516,44 @@ Error Assembler::b(const Label& label) {
 
   _patches.push_back(patch);
   return Error::kOk;
+}
+
+Error Assembler::bc(uint32_t bo, uint32_t bi, const Label& label) {
+  return emitBranch(bo, bi, label);
+}
+
+Error Assembler::bcl(uint32_t bo, uint32_t bi, const Label& label) {
+  if (ASMJIT_UNLIKELY(!_code)) {
+    return report_error(make_error(Error::kNotInitialized));
+  }
+
+  const size_t branch_offset = offset();
+  ASMJIT_PROPAGATE(emit32((16u << 26) | (bo << 21) | (bi << 16) | 1u));
+
+  const LabelEntry& le = _code->label_entry_of(label);
+  const BranchPatch patch { label.id(), branch_offset, BranchKind::kConditional };
+  if (le.is_bound()) {
+    return patchBranch(patch, label);
+  }
+
+  _patches.push_back(patch);
+  return Error::kOk;
+}
+
+Error Assembler::bclr(uint32_t bo, uint32_t bi, uint32_t bh) {
+  return emit32((19u << 26) | (bo << 21) | (bi << 16) | ((bh & 3u) << 11) | (16u << 1));
+}
+
+Error Assembler::bclrl(uint32_t bo, uint32_t bi, uint32_t bh) {
+  return emit32((19u << 26) | (bo << 21) | (bi << 16) | ((bh & 3u) << 11) | (16u << 1) | 1u);
+}
+
+Error Assembler::bcctr(uint32_t bo, uint32_t bi, uint32_t bh) {
+  return emit32((19u << 26) | (bo << 21) | (bi << 16) | ((bh & 3u) << 11) | (528u << 1));
+}
+
+Error Assembler::bcctrl(uint32_t bo, uint32_t bi, uint32_t bh) {
+  return emit32((19u << 26) | (bo << 21) | (bi << 16) | ((bh & 3u) << 11) | (528u << 1) | 1u);
 }
 
 Error Assembler::mtctr(Gp rs) {
@@ -457,6 +698,188 @@ Error Assembler::ldu(Gp rt, const Mem& m) {
   return emit32((58u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (uint16_t(m.offset())) | 1u);
 }
 
+Error Assembler::lbzx(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (87u << 1));
+}
+
+Error Assembler::lbzux(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (119u << 1));
+}
+
+Error Assembler::lhzx(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (279u << 1));
+}
+
+Error Assembler::lhzux(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (311u << 1));
+}
+
+Error Assembler::lhax(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (343u << 1));
+}
+
+Error Assembler::lhaux(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (375u << 1));
+}
+
+Error Assembler::lwzx(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (23u << 1));
+}
+
+Error Assembler::lwzux(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (55u << 1));
+}
+
+Error Assembler::lwax(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (341u << 1));
+}
+
+Error Assembler::ldx(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (21u << 1));
+}
+
+Error Assembler::ldux(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (53u << 1));
+}
+
+Error Assembler::stbx(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (215u << 1));
+}
+
+Error Assembler::stbux(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (247u << 1));
+}
+
+Error Assembler::sthx(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (407u << 1));
+}
+
+Error Assembler::sthux(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (439u << 1));
+}
+
+Error Assembler::stwx(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (151u << 1));
+}
+
+Error Assembler::stwux(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (183u << 1));
+}
+
+Error Assembler::stdx(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (149u << 1));
+}
+
+Error Assembler::stdux(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (181u << 1));
+}
+
+Error Assembler::lhbrx(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (790u << 1));
+}
+
+Error Assembler::lwbrx(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (534u << 1));
+}
+
+Error Assembler::ldbrx(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (532u << 1));
+}
+
+Error Assembler::sthbrx(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (918u << 1));
+}
+
+Error Assembler::stwbrx(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (662u << 1));
+}
+
+Error Assembler::stdbrx(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (660u << 1));
+}
+
+Error Assembler::lmw(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((46u << 26) | (rt.id() << 21) | (m.base_id() << 16) | uint16_t(m.offset()));
+}
+
+Error Assembler::stmw(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || m.has_index() || m.offset() < -32768 || m.offset() > 32767 || (m.offset() & 0u)))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((47u << 26) | (rs.id() << 21) | (m.base_id() << 16) | uint16_t(m.offset()));
+}
+
+Error Assembler::lswi(Gp rt, Gp ra, uint8_t nb) {
+  return emit32((31u << 26) | (rt.id() << 21) | (ra.id() << 16) | ((nb & 0x1Fu) << 11) | (597u << 1));
+}
+
+Error Assembler::lswx(Gp rt, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (533u << 1));
+}
+
+Error Assembler::stswi(Gp rs, Gp ra, uint8_t nb) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | ((nb & 0x1Fu) << 11) | (725u << 1));
+}
+
+Error Assembler::stswx(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (661u << 1));
+}
+
 Error Assembler::lwarx(Gp rt, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
     return report_error(make_error(Error::kInvalidAddress));
@@ -467,6 +890,20 @@ Error Assembler::ldarx(Gp rt, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
     return report_error(make_error(Error::kInvalidAddress));
   return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (84u << 1));
+}
+
+Error Assembler::lbarx(Gp rt, const Mem& m, uint32_t eh) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) |
+                (52u << 1) | (eh ? 1u : 0u));
+}
+
+Error Assembler::lharx(Gp rt, const Mem& m, uint32_t eh) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) |
+                (372u << 1) | (eh ? 1u : 0u));
 }
 
 Error Assembler::stwcx_(Gp rs, const Mem& m) {
@@ -481,30 +918,57 @@ Error Assembler::stdcx_(Gp rs, const Mem& m) {
   return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (214u << 1) | 1u);
 }
 
-Error Assembler::rldicl(Gp ra, Gp rs, uint8_t sh, uint8_t mb) {
-  return emit32(encode_rldi(rs.id(), ra.id(), sh, mb, 0));
+Error Assembler::stbcx_(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (694u << 1) | 1u);
 }
 
-Error Assembler::rldicr(Gp ra, Gp rs, uint8_t sh, uint8_t me) {
-  return emit32(encode_rldi(rs.id(), ra.id(), sh, me, 4));
+Error Assembler::sthcx_(Gp rs, const Mem& m) {
+  if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index()))
+    return report_error(make_error(Error::kInvalidAddress));
+  return emit32((31u << 26) | (rs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (726u << 1) | 1u);
 }
 
-Error Assembler::rldic(Gp ra, Gp rs, uint8_t sh, uint8_t mb) {
-  return emit32(encode_rldi(rs.id(), ra.id(), sh, mb, 8));
+Error Assembler::rldicl(Gp ra, Gp rs, uint8_t sh, uint8_t mb, bool rc) {
+  return emit32(encode_rldi(rs.id(), ra.id(), sh, mb, 0) | (rc ? 1u : 0u));
 }
 
-Error Assembler::rldimi(Gp ra, Gp rs, uint8_t sh, uint8_t mb) {
-  return emit32(encode_rldi(rs.id(), ra.id(), sh, mb, 12));
+Error Assembler::rldicr(Gp ra, Gp rs, uint8_t sh, uint8_t me, bool rc) {
+  return emit32(encode_rldi(rs.id(), ra.id(), sh, me, 4) | (rc ? 1u : 0u));
 }
 
-Error Assembler::rlwinm(Gp ra, Gp rs, uint8_t sh, uint8_t mb, uint8_t me) {
+Error Assembler::rldic(Gp ra, Gp rs, uint8_t sh, uint8_t mb, bool rc) {
+  return emit32(encode_rldi(rs.id(), ra.id(), sh, mb, 8) | (rc ? 1u : 0u));
+}
+
+Error Assembler::rldimi(Gp ra, Gp rs, uint8_t sh, uint8_t mb, bool rc) {
+  return emit32(encode_rldi(rs.id(), ra.id(), sh, mb, 12) | (rc ? 1u : 0u));
+}
+
+Error Assembler::rlwinm(Gp ra, Gp rs, uint8_t sh, uint8_t mb, uint8_t me, bool rc) {
   return emit32((21u << 26) | (rs.id() << 21) | (ra.id() << 16) |
-                ((sh & 0x1Fu) << 11) | ((mb & 0x1Fu) << 6) | ((me & 0x1Fu) << 1));
+                ((sh & 0x1Fu) << 11) | ((mb & 0x1Fu) << 6) | ((me & 0x1Fu) << 1) | (rc ? 1u : 0u));
 }
 
-Error Assembler::rlwimi(Gp ra, Gp rs, uint8_t sh, uint8_t mb, uint8_t me) {
+Error Assembler::rlwimi(Gp ra, Gp rs, uint8_t sh, uint8_t mb, uint8_t me, bool rc) {
   return emit32((20u << 26) | (rs.id() << 21) | (ra.id() << 16) |
-                ((sh & 0x1Fu) << 11) | ((mb & 0x1Fu) << 6) | ((me & 0x1Fu) << 1));
+                ((sh & 0x1Fu) << 11) | ((mb & 0x1Fu) << 6) | ((me & 0x1Fu) << 1) | (rc ? 1u : 0u));
+}
+
+Error Assembler::rlwnm(Gp ra, Gp rs, Gp rb, uint8_t mb, uint8_t me, bool rc) {
+  return emit32((23u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) |
+                ((mb & 0x1Fu) << 6) | ((me & 0x1Fu) << 1) | (rc ? 1u : 0u));
+}
+
+Error Assembler::rldcl(Gp ra, Gp rs, Gp rb, uint8_t mb, bool rc) {
+  return emit32((30u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) |
+                ((mb & 0x1Fu) << 6) | (8u << 1) | (rc ? 1u : 0u));
+}
+
+Error Assembler::rldcr(Gp ra, Gp rs, Gp rb, uint8_t me, bool rc) {
+  return emit32((30u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) |
+                ((me & 0x1Fu) << 6) | (9u << 1) | (rc ? 1u : 0u));
 }
 
 Error Assembler::clrldi(Gp ra, Gp rs, uint8_t n) {
@@ -551,20 +1015,190 @@ Error Assembler::eieio() {
   return emit32((31u << 26) | (854u << 1));
 }
 
-Error Assembler::cntlzw(Gp ra, Gp rs) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (26u << 1));
+Error Assembler::wait(uint32_t wc) {
+  return emit32((31u << 26) | ((wc & 3u) << 21) | (30u << 1));
 }
 
-Error Assembler::cntlzd(Gp ra, Gp rs) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (58u << 1));
+Error Assembler::dcbf(Gp ra, Gp rb) {
+  return emit32((31u << 26) | (ra.id() << 16) | (rb.id() << 11) | (86u << 1));
 }
 
-Error Assembler::cnttzd(Gp ra, Gp rs) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (570u << 1));
+Error Assembler::dcbst(Gp ra, Gp rb) {
+  return emit32((31u << 26) | (ra.id() << 16) | (rb.id() << 11) | (54u << 1));
+}
+
+Error Assembler::dcbt(Gp ra, Gp rb, uint8_t th) {
+  return emit32((31u << 26) | ((th & 0x1Fu) << 21) | (ra.id() << 16) | (rb.id() << 11) | (278u << 1));
+}
+
+Error Assembler::dcbtst(Gp ra, Gp rb, uint8_t th) {
+  return emit32((31u << 26) | ((th & 0x1Fu) << 21) | (ra.id() << 16) | (rb.id() << 11) | (246u << 1));
+}
+
+Error Assembler::dcbz(Gp ra, Gp rb) {
+  return emit32((31u << 26) | (ra.id() << 16) | (rb.id() << 11) | (1014u << 1));
+}
+
+Error Assembler::icbi(Gp ra, Gp rb) {
+  return emit32((31u << 26) | (ra.id() << 16) | (rb.id() << 11) | (982u << 1));
+}
+
+Error Assembler::icbt(uint32_t ct, Gp ra, Gp rb) {
+  return emit32((31u << 26) | ((ct & 0xFu) << 21) | (ra.id() << 16) | (rb.id() << 11) | (22u << 1));
+}
+
+Error Assembler::cntlzw(Gp ra, Gp rs, bool rc) {
+  return emitXRs(26u, ra, rs, rc);
+}
+
+Error Assembler::cntlzd(Gp ra, Gp rs, bool rc) {
+  return emitXRs(58u, ra, rs, rc);
+}
+
+Error Assembler::cnttzw(Gp ra, Gp rs, bool rc) {
+  return emitXRs(538u, ra, rs, rc);
+}
+
+Error Assembler::cnttzd(Gp ra, Gp rs, bool rc) {
+  return emitXRs(570u, ra, rs, rc);
 }
 
 Error Assembler::popcntd(Gp ra, Gp rs) {
-  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (506u << 1));
+  return emitXRs(506u, ra, rs, false);
+}
+
+Error Assembler::popcntb(Gp ra, Gp rs) {
+  return emitXRs(122u, ra, rs, false);
+}
+
+Error Assembler::popcntw(Gp ra, Gp rs) {
+  return emitXRs(378u, ra, rs, false);
+}
+
+Error Assembler::prtyd(Gp ra, Gp rs) {
+  return emitXRs(186u, ra, rs, false);
+}
+
+Error Assembler::prtyw(Gp ra, Gp rs) {
+  return emitXRs(154u, ra, rs, false);
+}
+
+Error Assembler::bpermd(Gp ra, Gp rs, Gp rb) {
+  return emit32((31u << 26) | (rs.id() << 21) | (ra.id() << 16) | (rb.id() << 11) | (252u << 1));
+}
+
+Error Assembler::mfcr(Gp rt) {
+  return emit32((31u << 26) | (rt.id() << 21) | (19u << 1));
+}
+
+Error Assembler::mtcrf(uint32_t fxm, Gp rs) {
+  return emit32((31u << 26) | (rs.id() << 21) | ((fxm & 0xFFu) << 12) | (144u << 1));
+}
+
+Error Assembler::mfocrf(Gp rt, uint32_t fxm) {
+  return emit32((31u << 26) | (rt.id() << 21) | ((fxm & 0xFFu) << 12) | (1u << 20) | (19u << 1));
+}
+
+Error Assembler::mtocrf(uint32_t fxm, Gp rs) {
+  return emit32((31u << 26) | (rs.id() << 21) | ((fxm & 0xFFu) << 12) | (1u << 20) | (144u << 1));
+}
+
+Error Assembler::mcrxrx(uint32_t bf) {
+  return emit32((31u << 26) | (bf << 23) | (576u << 1));
+}
+
+Error Assembler::mfspr(Gp rt, uint32_t spr) {
+  return emit32((31u << 26) | (rt.id() << 21) | ((spr & 0x1Fu) << 16) |
+                (((spr >> 5) & 0x1Fu) << 11) | (339u << 1));
+}
+
+Error Assembler::mtspr(uint32_t spr, Gp rs) {
+  return emit32((31u << 26) | (rs.id() << 21) | ((spr & 0x1Fu) << 16) |
+                (((spr >> 5) & 0x1Fu) << 11) | (467u << 1));
+}
+
+Error Assembler::mfxer(Gp rt) {
+  return mfspr(rt, 1);
+}
+
+Error Assembler::mtxer(Gp rs) {
+  return mtspr(1, rs);
+}
+
+Error Assembler::setb(Gp rt, uint32_t bfa) {
+  return emit32((31u << 26) | (rt.id() << 21) | ((bfa & 7u) << 18) | (128u << 1));
+}
+
+Error Assembler::mcrf(uint32_t bf, uint32_t bfa) {
+  return emit32((19u << 26) | (bf << 23) | (bfa << 18));
+}
+
+Error Assembler::crand(uint32_t bt, uint32_t ba, uint32_t bb) {
+  return emit32((19u << 26) | (bt << 21) | (ba << 16) | (bb << 11) | (257u << 1));
+}
+
+Error Assembler::crandc(uint32_t bt, uint32_t ba, uint32_t bb) {
+  return emit32((19u << 26) | (bt << 21) | (ba << 16) | (bb << 11) | (129u << 1));
+}
+
+Error Assembler::crnor(uint32_t bt, uint32_t ba, uint32_t bb) {
+  return emit32((19u << 26) | (bt << 21) | (ba << 16) | (bb << 11) | (33u << 1));
+}
+
+Error Assembler::creqv(uint32_t bt, uint32_t ba, uint32_t bb) {
+  return emit32((19u << 26) | (bt << 21) | (ba << 16) | (bb << 11) | (289u << 1));
+}
+
+Error Assembler::crnand(uint32_t bt, uint32_t ba, uint32_t bb) {
+  return emit32((19u << 26) | (bt << 21) | (ba << 16) | (bb << 11) | (225u << 1));
+}
+
+Error Assembler::cror(uint32_t bt, uint32_t ba, uint32_t bb) {
+  return emit32((19u << 26) | (bt << 21) | (ba << 16) | (bb << 11) | (449u << 1));
+}
+
+Error Assembler::crorc(uint32_t bt, uint32_t ba, uint32_t bb) {
+  return emit32((19u << 26) | (bt << 21) | (ba << 16) | (bb << 11) | (417u << 1));
+}
+
+Error Assembler::crxor(uint32_t bt, uint32_t ba, uint32_t bb) {
+  return emit32((19u << 26) | (bt << 21) | (ba << 16) | (bb << 11) | (193u << 1));
+}
+
+Error Assembler::crclr(uint32_t bt) {
+  return crxor(bt, bt, bt);
+}
+
+Error Assembler::crset(uint32_t bt) {
+  return creqv(bt, bt, bt);
+}
+
+Error Assembler::crmove(uint32_t bt, uint32_t ba) {
+  return cror(bt, ba, ba);
+}
+
+Error Assembler::crnot(uint32_t bt, uint32_t ba) {
+  return crnor(bt, ba, ba);
+}
+
+Error Assembler::sc(uint32_t lev) {
+  return emit32((17u << 26) | ((lev & 0x7FFFu) << 21) | 2u);
+}
+
+Error Assembler::scv(uint32_t lev) {
+  return emit32((17u << 26) | ((lev & 0x7FFFu) << 21) | 1u);
+}
+
+Error Assembler::addg6s(Gp rt, Gp ra, Gp rb) {
+  return emitXO(74u, rt, ra, rb, false, false);
+}
+
+Error Assembler::cbcdtd(Gp ra, Gp rs) {
+  return emitXRs(314u, ra, rs, false);
+}
+
+Error Assembler::cdtbcd(Gp ra, Gp rs) {
+  return emitXRs(282u, ra, rs, false);
 }
 
 Error Assembler::prolog(int32_t frame_size) {
