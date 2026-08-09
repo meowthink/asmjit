@@ -5,6 +5,7 @@
 // Minimal PPC64 backend encoding test.
 
 #include <asmjit/ppc.h>
+#include <asmjit/ppc/ppccpuinfo_p.h>
 
 #include <cstdint>
 #include <cstring>
@@ -1205,6 +1206,38 @@ static bool testBailFpSpecial() {
     0x4E800020u  // blr
   };
   return checkWords(code, expected, 18);
+}
+
+static bool testCpuFeatures() {
+  using PPC = CpuFeatures::PPC;
+  bool ok = true;
+
+  auto expect = [&](const char* name, bool cond) {
+    if (!cond) {
+      std::printf("cpu feature check '%s' FAILED\n", name);
+      ok = false;
+    }
+  };
+
+  // hwcap: Altivec + ARCH_2_07 + HTM.
+  {
+    CpuFeatures::PPC f {};
+    ppc::CpuInfoInternal::detect_features_from_hwcap(f, 0x10000000u, 0x80000000u | 0x40000000u);
+    expect("hwcap altivec", f.has_altivec());
+    expect("hwcap 2.07 cumulative", f.has_isa_2_07() && f.has_isa_2_06() && f.has_isa_1_1());
+    expect("hwcap htm", f.has_htm());
+  }
+
+  // hwcap2: ARCH_3_00 + IEEE128/DARN/SCV.
+  {
+    CpuFeatures::PPC f {};
+    ppc::CpuInfoInternal::detect_features_from_hwcap(f, 0, 0x00800000u | 0x00400000u | 0x00200000u | 0x00100000u);
+    expect("hwcap2 3.0", f.has_isa_3_0());
+    expect("hwcap2 flags", f.has_ieee128() && f.has_darn() && f.has_scv());
+    expect("hwcap2 not 3.1", !f.has_isa_3_1());
+  }
+
+  return ok;
 }
 
 static bool testPrologFpSaves() {
@@ -2589,6 +2622,7 @@ static bool testExecutionVmxExt() {
 int main() {
   bool ok = true;
   ok &= testBasic();
+  ok &= testCpuFeatures();
   ok &= testBigEndian();
   ok &= testBigEndianBranches();
   ok &= testPrologEpilog();

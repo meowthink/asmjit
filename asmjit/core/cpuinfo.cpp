@@ -54,6 +54,21 @@
 
 #endif // ASMJIT_ARCH_ARM
 
+#if ASMJIT_ARCH_PPC
+  #include <asmjit/ppc/ppccpuinfo_p.h>
+
+  #if (defined(__linux__) || defined(__FreeBSD__))
+    // Required by `getauxval()` on Linux and `elf_aux_info()` on FreeBSD.
+    #include <sys/auxv.h>
+    #ifndef AT_HWCAP
+      #define AT_HWCAP 16
+    #endif
+    #ifndef AT_HWCAP2
+      #define AT_HWCAP2 26
+    #endif
+  #endif
+#endif // ASMJIT_ARCH_PPC
+
 #if !defined(_WIN32) && (ASMJIT_ARCH_X86 || ASMJIT_ARCH_ARM)
   #include <unistd.h>
 #endif
@@ -88,6 +103,10 @@ ASMJIT_BEGIN_NAMESPACE
 //     - Apple   - sysctlbyname() based detection with FamilyId matrix (record for each family id).
 //     - Windows - IsProcessorFeaturePresent() based detection (only detects a subset of features).
 //     - Others  - NOT IMPLEMENTED!
+//
+//   * PPC64:
+//     - Linux   - HWCAPS based detection.
+//     - FreeBSD - HWCAPS based detection (shared with Linux code).
 //
 //   * Others
 //     - NOT IMPLEMENTED!
@@ -2342,6 +2361,35 @@ static ASMJIT_FAVOR_SIZE CpuHints recalculate_hints(const CpuInfo& cpu_info, con
 
 #endif
 
+// CpuInfo - Detect - PPC
+// ======================
+
+#if ASMJIT_ARCH_PPC
+
+namespace ppc {
+
+static ASMJIT_FAVOR_SIZE void detect_ppc_cpu(CpuInfo& cpu) noexcept {
+  cpu._was_detected = true;
+
+  CpuFeatures::PPC& features = cpu.features().ppc();
+
+  // On Linux hwcap is the only reliable user-space feature source.
+#if defined(__linux__)
+  unsigned long hwcap = getauxval(AT_HWCAP);
+  unsigned long hwcap2 = getauxval(AT_HWCAP2);
+  CpuInfoInternal::detect_features_from_hwcap(features, uint32_t(hwcap), uint32_t(hwcap2));
+#elif defined(__FreeBSD__)
+  unsigned long hwcap = 0, hwcap2 = 0;
+  elf_aux_info(AT_HWCAP, &hwcap, sizeof(hwcap));
+  elf_aux_info(AT_HWCAP2, &hwcap2, sizeof(hwcap2));
+  CpuInfoInternal::detect_features_from_hwcap(features, uint32_t(hwcap), uint32_t(hwcap2));
+#endif
+}
+
+} // {ppc}
+
+#endif // ASMJIT_ARCH_PPC
+
 // CpuInfo - Detect - Host
 // =======================
 
@@ -2361,6 +2409,8 @@ const CpuInfo& CpuInfo::host() noexcept {
     x86::detect_x86_cpu(cpu_info_local);
 #elif ASMJIT_ARCH_ARM
     arm::detect_arm_cpu(cpu_info_local);
+#elif ASMJIT_ARCH_PPC
+    ppc::detect_ppc_cpu(cpu_info_local);
 #endif
     cpu_info_local._hw_thread_count = detect_hw_thread_count();
     cpu_info_local.update_hints();

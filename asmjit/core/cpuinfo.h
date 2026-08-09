@@ -1054,8 +1054,66 @@ public:
     #undef ASMJIT_ARM_FEATURE
   };
 
+  //! PPC specific features data; ISA levels are cumulative.
+  struct PPC : public Data {
+    //! PPC CPU feature identifiers.
+    enum Id : uint8_t {
+      // @EnumValuesBegin{"enum": "CpuFeatures::PPC"}@
+      kNone = 0,                 //!< No feature (never set, used internally).
+
+      kISA_1_1,                  //!< CPU implements at least PowerPC ISA 1.1 (601/603/604/"G3"/"G4").
+      kISA_2_01,                 //!< CPU implements at least PowerPC ISA 2.01 (POWER5, 970/"G5").
+      kISA_2_02,                 //!< CPU implements at least PowerPC ISA 2.02 (970MP, Cell PPE, Xenon).
+      kISA_2_03,                 //!< CPU implements at least Power ISA 2.03 (Book E unification).
+      kISA_2_04,                 //!< CPU implements at least Power ISA 2.04 (POWER6).
+      kISA_2_06,                 //!< CPU implements at least Power ISA 2.06 (POWER7, VSX introduced).
+      kISA_2_07,                 //!< CPU implements at least Power ISA 2.07 (POWER8).
+      kISA_3_0,                  //!< CPU implements at least Power ISA 3.0 (POWER9).
+      kISA_3_1,                  //!< CPU implements at least Power ISA 3.1 (POWER10).
+
+      kAltivec,                  //!< CPU has Altivec (VMX) instructions.
+      kVSX,                      //!< CPU has VSX instructions (implied by 2.06+).
+      kSPE,                      //!< CPU has SPE instructions (e500 Book E DSP).
+      kDFP,                      //!< CPU has decimal floating-point instructions.
+      kHTM,                      //!< CPU has hardware transactional memory.
+      kSCV,                      //!< CPU has `scv` (system call vectored).
+      kDARN,                     //!< CPU has `darn` (random number generator).
+      kIEEE128,                  //!< CPU has IEEE 128-bit binary floating-point.
+      kMMA,                      //!< CPU has MMA (matrix-multiply assist).
+      // @EnumValuesEnd@
+
+      kMaxValue = kMMA
+    };
+
+    #define ASMJIT_PPC_FEATURE(accessor, feature) \
+      /*! Tests whether feature is present. */ \
+      ASMJIT_INLINE_NODEBUG bool accessor() const noexcept { return has(PPC::feature); }
+
+    ASMJIT_PPC_FEATURE(has_isa_1_1, kISA_1_1)
+    ASMJIT_PPC_FEATURE(has_isa_2_01, kISA_2_01)
+    ASMJIT_PPC_FEATURE(has_isa_2_02, kISA_2_02)
+    ASMJIT_PPC_FEATURE(has_isa_2_03, kISA_2_03)
+    ASMJIT_PPC_FEATURE(has_isa_2_04, kISA_2_04)
+    ASMJIT_PPC_FEATURE(has_isa_2_06, kISA_2_06)
+    ASMJIT_PPC_FEATURE(has_isa_2_07, kISA_2_07)
+    ASMJIT_PPC_FEATURE(has_isa_3_0, kISA_3_0)
+    ASMJIT_PPC_FEATURE(has_isa_3_1, kISA_3_1)
+    ASMJIT_PPC_FEATURE(has_altivec, kAltivec)
+    ASMJIT_PPC_FEATURE(has_vsx, kVSX)
+    ASMJIT_PPC_FEATURE(has_spe, kSPE)
+    ASMJIT_PPC_FEATURE(has_dfp, kDFP)
+    ASMJIT_PPC_FEATURE(has_htm, kHTM)
+    ASMJIT_PPC_FEATURE(has_scv, kSCV)
+    ASMJIT_PPC_FEATURE(has_darn, kDARN)
+    ASMJIT_PPC_FEATURE(has_ieee128, kIEEE128)
+    ASMJIT_PPC_FEATURE(has_mma, kMMA)
+
+    #undef ASMJIT_PPC_FEATURE
+  };
+
   static_assert(uint32_t(X86::kMaxValue) < kMaxFeatures, "The number of X86 CPU features cannot exceed CpuFeatures::kMaxFeatures");
   static_assert(uint32_t(ARM::kMaxValue) < kMaxFeatures, "The number of ARM CPU features cannot exceed CpuFeatures::kMaxFeatures");
+  static_assert(uint32_t(PPC::kMaxValue) < kMaxFeatures, "The number of PPC CPU features cannot exceed CpuFeatures::kMaxFeatures");
 
   //! \}
 
@@ -1109,6 +1167,11 @@ public:
   ASMJIT_INLINE_NODEBUG ARM& arm() noexcept { return data<ARM>(); }
   //! Returns CpuFeatures::Data as \ref CpuFeatures::ARM (const).
   ASMJIT_INLINE_NODEBUG const ARM& arm() const noexcept { return data<ARM>(); }
+
+  //! Returns CpuFeatures::Data as \ref CpuFeatures::PPC.
+  ASMJIT_INLINE_NODEBUG PPC& ppc() noexcept { return data<PPC>(); }
+  //! Returns CpuFeatures::Data as \ref CpuFeatures::PPC (const).
+  ASMJIT_INLINE_NODEBUG const PPC& ppc() const noexcept { return data<PPC>(); }
 
   //! Returns all features as array of bitwords (see \ref Support::BitWord).
   ASMJIT_INLINE_NODEBUG BitWord* bits() noexcept { return _data.bits(); }

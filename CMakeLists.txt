@@ -256,6 +256,7 @@ set(ASMJIT_SRC
   asmjit/ppc/ppcarchtraits_p.h
   asmjit/ppc/ppcassembler.cpp
   asmjit/ppc/ppcassembler.h
+  asmjit/ppc/ppccpuinfo_p.h
   asmjit/ppc/ppcfunc.cpp
   asmjit/ppc/ppcfunc_p.h
   asmjit/ppc/ppcruntime.cpp
