@@ -7,6 +7,7 @@
 #define ASMJIT_PPC_PPCASSEMBLER_H_INCLUDED
 
 #include <asmjit/core/assembler.h>
+#include <asmjit/ppc/ppcinst.h>
 
 #include <cstdint>
 #include <vector>
@@ -324,6 +325,14 @@ public:
 
   ASMJIT_API Error on_attach(CodeHolder& code) noexcept override;
   ASMJIT_API Error on_detach(CodeHolder& code) noexcept override;
+
+  //! \}
+
+  //! \name Instruction Emission
+  //! \{
+
+  //! Emits an instruction by \ref Inst::Id (generic emission).
+  ASMJIT_API Error _emit(InstId inst_id, const Operand_& o0, const Operand_& o1, const Operand_& o2, const Operand_* op_ext) override;
 
   //! \}
 

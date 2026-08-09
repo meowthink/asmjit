@@ -1237,6 +1237,175 @@ static bool testCpuFeatures() {
     expect("hwcap2 not 3.1", !f.has_isa_3_1());
   }
 
+  // query_features.
+  {
+    CpuFeatures f;
+    expect("query lxv isa_3_0", InstAPI::query_features(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdLxv), nullptr, 0, &f) == Error::kOk && f.ppc().has_isa_3_0());
+  }
+  {
+    CpuFeatures f;
+    expect("query vaddubm altivec", InstAPI::query_features(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdVaddubm), nullptr, 0, &f) == Error::kOk && f.ppc().has_altivec());
+  }
+  {
+    CpuFeatures f;
+    expect("query xxsel vsx", InstAPI::query_features(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdXxsel), nullptr, 0, &f) == Error::kOk && f.ppc().has_vsx());
+  }
+  {
+    CpuFeatures f;
+    expect("query add empty", InstAPI::query_features(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdAdd), nullptr, 0, &f) == Error::kOk && f.is_empty());
+  }
+  {
+    CpuFeatures f;
+    expect("query bad id", InstAPI::query_features(Arch::kPPC64_LE, BaseInst(InstId(9999)), nullptr, 0, &f) != Error::kOk);
+  }
+
+  return ok;
+}
+
+static bool checkEmit(const char* name,
+                      void (*emitFn)(ppc::Assembler&),
+                      void (*directFn)(ppc::Assembler&)) {
+  CodeHolder e;
+  if (e.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                          Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk)
+    return false;
+  CodeHolder d;
+  if (d.init(e.environment()) != Error::kOk)
+    return false;
+
+  ppc::Assembler ae(&e);
+  ppc::Assembler ad(&d);
+  emitFn(ae);
+  directFn(ad);
+
+  const Section* es = e.text_section();
+  const Section* ds = d.text_section();
+  if (es->buffer().size() != ds->buffer().size()) {
+    std::printf("emit '%s': size mismatch %zu vs %zu\n", name, es->buffer().size(), ds->buffer().size());
+    return false;
+  }
+  if (std::memcmp(es->buffer().data(), ds->buffer().data(), es->buffer().size()) != 0) {
+    std::printf("emit '%s': data mismatch\n", name);
+    return false;
+  }
+  return true;
+}
+
+static bool testEmit() {
+  bool ok = true;
+  auto check = [&](const char* n, void (*f)(ppc::Assembler&), void (*g)(ppc::Assembler&)) {
+    ok &= checkEmit(n, f, g);
+  };
+
+  // Integer.
+  check("add", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdAdd, ppc::r3, ppc::r4, ppc::r5); },
+               [](ppc::Assembler& a) { a.add(ppc::r3, ppc::r4, ppc::r5); });
+  check("and_", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdAnd_, ppc::r3, ppc::r4, ppc::r5); },
+                [](ppc::Assembler& a) { a.and_(ppc::r3, ppc::r4, ppc::r5); });
+  check("subf", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdSubf, ppc::r3, ppc::r4, ppc::r5); },
+                [](ppc::Assembler& a) { a.subf(ppc::r3, ppc::r4, ppc::r5); });
+  check("addi", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdAddi, ppc::r3, ppc::r4, Imm(5)); },
+                [](ppc::Assembler& a) { a.addi(ppc::r3, ppc::r4, 5); });
+  check("ori", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdOri, ppc::r3, ppc::r4, Imm(0x1234)); },
+               [](ppc::Assembler& a) { a.ori(ppc::r3, ppc::r4, 0x1234); });
+  check("sldi", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdSldi, ppc::r3, ppc::r4, Imm(5)); },
+                [](ppc::Assembler& a) { a.sldi(ppc::r3, ppc::r4, 5); });
+  check("rlwinm", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdRlwinm, ppc::r3, ppc::r4, Imm(5), Imm(6), Imm(7)); },
+                  [](ppc::Assembler& a) { a.rlwinm(ppc::r3, ppc::r4, 5, 6, 7); });
+  check("li", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdLi, ppc::r3, Imm(-1)); },
+              [](ppc::Assembler& a) { a.li(ppc::r3, -1); });
+  check("isel", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdIsel, ppc::r3, ppc::r4, ppc::r5, Imm(28)); },
+                [](ppc::Assembler& a) { a.isel(ppc::r3, ppc::r4, ppc::r5, 28); });
+  check("extsw", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdExtsw, ppc::r3, ppc::r4); },
+                 [](ppc::Assembler& a) { a.extsw(ppc::r3, ppc::r4); });
+  check("mflr", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdMflr, ppc::r3); },
+                [](ppc::Assembler& a) { a.mflr(ppc::r3); });
+
+  // Memory.
+  check("ld", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdLd, ppc::r3, ppc::ptr(ppc::r4, 8)); },
+              [](ppc::Assembler& a) { a.ld(ppc::r3, ppc::ptr(ppc::r4, 8)); });
+  check("stwx", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdStwx, ppc::r3, ppc::ptr(ppc::r4, ppc::r5)); },
+                [](ppc::Assembler& a) { a.stwx(ppc::r3, ppc::ptr(ppc::r4, ppc::r5)); });
+  check("lbarx", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdLbarx, ppc::r3, ppc::ptr(ppc::r4, ppc::r5), Imm(1)); },
+                 [](ppc::Assembler& a) { a.lbarx(ppc::r3, ppc::ptr(ppc::r4, ppc::r5), 1); });
+
+  // Branches.
+  check("b", [](ppc::Assembler& a) { Label l = a.new_label(); a.emit(ppc::Inst::kIdB, l); a.bind(l); },
+             [](ppc::Assembler& a) { Label l = a.new_label(); a.b(l); a.bind(l); });
+  check("beq", [](ppc::Assembler& a) { Label l = a.new_label(); a.emit(ppc::Inst::kIdBeq, l); a.bind(l); },
+               [](ppc::Assembler& a) { Label l = a.new_label(); a.beq(l); a.bind(l); });
+  check("bc", [](ppc::Assembler& a) { Label l = a.new_label(); a.emit(ppc::Inst::kIdBc, Imm(12), Imm(2), l); a.bind(l); },
+              [](ppc::Assembler& a) { Label l = a.new_label(); a.bc(12, 2, l); a.bind(l); });
+  check("blr", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdBlr); },
+               [](ppc::Assembler& a) { a.blr(); });
+  check("nop", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdNop); },
+               [](ppc::Assembler& a) { a.nop(); });
+
+  // Floating-point.
+  check("fadd", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdFadd, ppc::f1, ppc::f2, ppc::f3); },
+                [](ppc::Assembler& a) { a.fadd(ppc::f1, ppc::f2, ppc::f3); });
+  check("fsel", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdFsel, ppc::f1, ppc::f2, ppc::f3, ppc::f4); },
+                [](ppc::Assembler& a) { a.fsel(ppc::f1, ppc::f2, ppc::f3, ppc::f4); });
+  check("fcmpu", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdFcmpu, Imm(1), ppc::f1, ppc::f2); },
+                 [](ppc::Assembler& a) { a.fcmpu(1, ppc::f1, ppc::f2); });
+  check("lfd", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdLfd, ppc::f1, ppc::ptr(ppc::r4, 8)); },
+               [](ppc::Assembler& a) { a.lfd(ppc::f1, ppc::ptr(ppc::r4, 8)); });
+
+  // VMX.
+  check("vaddubm", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdVaddubm, ppc::v1, ppc::v2, ppc::v3); },
+                   [](ppc::Assembler& a) { a.vaddubm(ppc::v1, ppc::v2, ppc::v3); });
+  check("vperm", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdVperm, ppc::v1, ppc::v2, ppc::v3, ppc::v4); },
+                 [](ppc::Assembler& a) { a.vperm(ppc::v1, ppc::v2, ppc::v3, ppc::v4); });
+  check("vsldoi", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdVsldoi, ppc::v1, ppc::v2, ppc::v3, Imm(8)); },
+                  [](ppc::Assembler& a) { a.vsldoi(ppc::v1, ppc::v2, ppc::v3, 8); });
+  check("lvx", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdLvx, ppc::v1, ppc::ptr(ppc::r4, ppc::r5)); },
+               [](ppc::Assembler& a) { a.lvx(ppc::v1, ppc::ptr(ppc::r4, ppc::r5)); });
+
+  // VSX.
+  check("xsadddp", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdXsadddp, ppc::vs1, ppc::vs2, ppc::vs3); },
+                   [](ppc::Assembler& a) { a.xsadddp(ppc::vs1, ppc::vs2, ppc::vs3); });
+  check("xxsel", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdXxsel, ppc::vs1, ppc::vs2, ppc::vs3, ppc::vs4); },
+                 [](ppc::Assembler& a) { a.xxsel(ppc::vs1, ppc::vs2, ppc::vs3, ppc::vs4); });
+  check("xxspltd", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdXxspltd, ppc::vs1, ppc::vs2, Imm(1)); },
+                   [](ppc::Assembler& a) { a.xxspltd(ppc::vs1, ppc::vs2, 1); });
+  check("lxv", [](ppc::Assembler& a) { a.emit(ppc::Inst::kIdLxv, ppc::vs1, ppc::ptr(ppc::r4, 16)); },
+               [](ppc::Assembler& a) { a.lxv(ppc::vs1, ppc::ptr(ppc::r4, 16)); });
+
+  return ok;
+}
+
+static bool testValidate() {
+  bool ok = true;
+
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk)
+    return false;
+  ppc::Assembler a(&code);
+  a.add_diagnostic_options(DiagnosticOptions::kValidateAssembler);
+
+  // Valid instructions pass.
+  ok &= a.emit(ppc::Inst::kIdAdd, ppc::r3, ppc::r4, ppc::r5) == Error::kOk;
+  ok &= a.emit(ppc::Inst::kIdSc) == Error::kOk;
+  ok &= a.emit(ppc::Inst::kIdSc, Imm(1)) == Error::kOk;
+  ok &= a.emit(ppc::Inst::kIdLbarx, ppc::r3, ppc::ptr(ppc::r4, ppc::r5)) == Error::kOk;
+  ok &= a.emit(ppc::Inst::kIdLbarx, ppc::r3, ppc::ptr(ppc::r4, ppc::r5), Imm(1)) == Error::kOk;
+  ok &= a.emit(ppc::Inst::kIdCmpd, ppc::r3, ppc::r4) == Error::kOk;
+  ok &= a.emit(ppc::Inst::kIdCmpd, ppc::r3, ppc::r4, Imm(0)) == Error::kOk;
+
+  // Invalid operand counts fail.
+  ok &= a.emit(ppc::Inst::kIdAdd, ppc::r3, ppc::r4) != Error::kOk;
+  ok &= a.emit(ppc::Inst::kIdSc, ppc::r3) != Error::kOk;
+
+  // Invalid operand kinds fail.
+  ok &= a.emit(ppc::Inst::kIdAddi, ppc::r3, ppc::r4, ppc::r5) != Error::kOk;
+  ok &= a.emit(ppc::Inst::kIdLd, ppc::r3, ppc::r4) != Error::kOk;
+
+  // Unknown instruction id fails.
+  ok &= a.emit(ppc::Inst::Id(9999)) != Error::kOk;
+
+  if (!ok)
+    std::printf("validator tests FAILED\n");
   return ok;
 }
 
@@ -1425,7 +1594,6 @@ static bool testVsxRoundLogical() {
   return checkWords(code, expected, 31);
 }
 
-
 static bool testVsxFpArithmetic() {
   CodeHolder code;
   if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
@@ -1518,6 +1686,7 @@ static bool testVsxFpArithmetic() {
   };
   return checkWords(code, expected, 62);
 }
+
 static bool testVsxMemExt() {
   CodeHolder code;
   if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
@@ -1538,6 +1707,7 @@ static bool testVsxMemExt() {
   };
   return checkWords(code, expected, 4);
 }
+
 static bool testVsxRegExt() {
   CodeHolder code;
   if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
@@ -2413,8 +2583,6 @@ static bool testExecutionVsx() {
   return fn2(0x1122334455667788ll) == 0x55667788ll;
 }
 
-
-#if ASMJIT_ARCH_PPC == 64
 static bool testExecutionVsxFp() {
   using Fn = uint64_t (*)(uint64_t, uint64_t);
 
@@ -2448,7 +2616,6 @@ static bool testExecutionVsxFp() {
   std::memcpy(&result, &got, 8);
   return result == (va + vb) * va;
 }
-#endif
 
 static bool testExecutionCallHelper() {
 #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
@@ -2623,6 +2790,8 @@ int main() {
   bool ok = true;
   ok &= testBasic();
   ok &= testCpuFeatures();
+  ok &= testEmit();
+  ok &= testValidate();
   ok &= testBigEndian();
   ok &= testBigEndianBranches();
   ok &= testPrologEpilog();
@@ -2684,9 +2853,7 @@ int main() {
   ok &= testExecutionFpCompare();
   ok &= testExecutionFpNonvolatile();
   ok &= testExecutionVsx();
-#if ASMJIT_ARCH_PPC == 64
   ok &= testExecutionVsxFp();
-#endif
   ok &= testExecutionCallHelper();
   ok &= testExecutionTailCall();
   ok &= testExecutionBLong();

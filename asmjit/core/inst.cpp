@@ -15,6 +15,10 @@
   #include <asmjit/arm/a64instapi_p.h>
 #endif
 
+#if !defined(ASMJIT_NO_PPC)
+  #include <asmjit/ppc/ppcinstapi_p.h>
+#endif
+
 ASMJIT_BEGIN_NAMESPACE
 
 // InstAPI - InstId <-> String
@@ -119,6 +123,12 @@ Error InstAPI::query_features(Arch arch, const BaseInst& inst, const Operand_* o
 #if !defined(ASMJIT_NO_AARCH64)
   if (Environment::is_family_aarch64(arch)) {
     return a64::InstInternal::query_features(inst, operands, op_count, out);
+  }
+#endif
+
+#if !defined(ASMJIT_NO_PPC)
+  if (Environment::is_family_ppc(arch)) {
+    return ppc::InstInternal::query_features(inst, operands, op_count, out);
   }
 #endif
 

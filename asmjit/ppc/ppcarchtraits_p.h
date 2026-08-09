@@ -28,8 +28,11 @@ static const constexpr ArchTraits ppc64_arch_traits = {
   // Min/Max stack offset.
   0, 0x7FFFFFFFu,
 
-  // Supported register types.
-  0u | (1u << uint32_t(RegType::kGp64)),
+  // Supported register types: GPRs (r0..r31) and 64-bit FPRs (f0..f31)
+  // plus 128-bit VRs / VSRs registers (v0..v31 / vs0..vs63).
+  0u | (1u << uint32_t(RegType::kGp64  ))
+     | (1u << uint32_t(RegType::kVec64 ))
+     | (1u << uint32_t(RegType::kVec128)),
 
   // ISA features [Gp, Vec, Mask, Extra].
   {{
@@ -49,7 +52,9 @@ static const constexpr ArchTraits ppc64_arch_traits = {
                     index + uint32_t(TypeId::_kBaseStart) == uint32_t(TypeId::kInt64)   ? RegType::kGp64 : \
                     index + uint32_t(TypeId::_kBaseStart) == uint32_t(TypeId::kUInt64)  ? RegType::kGp64 : \
                     index + uint32_t(TypeId::_kBaseStart) == uint32_t(TypeId::kIntPtr)  ? RegType::kGp64 : \
-                    index + uint32_t(TypeId::_kBaseStart) == uint32_t(TypeId::kUIntPtr) ? RegType::kGp64 : RegType::kNone)
+                    index + uint32_t(TypeId::_kBaseStart) == uint32_t(TypeId::kUIntPtr) ? RegType::kGp64 : \
+                    index + uint32_t(TypeId::_kBaseStart) == uint32_t(TypeId::kFloat32) ? RegType::kVec64 : \
+                    index + uint32_t(TypeId::_kBaseStart) == uint32_t(TypeId::kFloat64) ? RegType::kVec64 : RegType::kNone)
   {{ ASMJIT_LOOKUP_TABLE_32(V, 0) }},
   #undef V
 
