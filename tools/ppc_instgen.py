@@ -104,6 +104,58 @@ def feature_of(name):
     return "kNone"
 
 
+# Instructions that never write a register operand. This covers compares (the
+# result goes to a CR field), traps, branches, moves-to-special-registers, CR
+# field operations, and barriers / cache-maintenance instructions. Note that
+# `cmpb` is NOT in this set: it writes its first GPR operand. Likewise
+# `xscmpeqdp`/`xscmpgedp`/`xscmpgtdp` are NOT in this set: since Power ISA 3.0
+# they write an all-ones/all-zeros mask to XT (only `xscmpodp`/`xscmpudp` and
+# the `xstdivdp`/`xstsqrtdp` tests still write a CR field).
+RW_NO_WRITE = {
+    # Compares.
+    "cmpd", "cmpld", "cmpdi", "cmp", "cmpl", "cmpi", "cmpli", "cmpldi",
+    "cmpeqb", "cmprb",
+    "fcmpu", "fcmpo", "ftdiv", "ftsqrt",
+    "xscmpudp", "xscmpodp", "xstdivdp", "xstsqrtdp",
+    # Traps.
+    "tw", "twi", "td", "tdi",
+    # Branches.
+    "b", "beq", "bne", "blt", "bge", "bgt", "ble", "bc", "bcl", "bclr",
+    "bclrl", "bcctr", "bcctrl", "bctr", "bctrl", "bl", "blr",
+    # Moves to special registers (the source GPR is only read).
+    "mtctr", "mtlr", "mtcrf", "mtocrf", "mtspr", "mtxer",
+    "mtfsf", "mtfsb0", "mtfsb1", "mtfsfi",
+    # CR field operations (fields are encoded as immediates).
+    "mcrf", "mcrfs", "mcrxrx",
+    "crand", "crandc", "crnor", "creqv", "crnand", "cror", "crorc", "crxor",
+    "crclr", "crset", "crmove", "crnot",
+    # Barriers and cache-maintenance instructions.
+    "sync", "lwsync", "isync", "eieio", "wait", "sc", "scv",
+    "dcbf", "dcbst", "dcbt", "dcbtst", "dcbz", "icbi", "icbt",
+}
+
+
+def rw_class_of(name):
+    """Returns the read/write behavior class of an instruction name.
+
+    PPC instructions are regular: the destination register comes first and
+    everything else is read. The exceptions are stores (the first register is
+    only read and the memory operand is written), update-form loads/stores
+    (the memory base register is also written), and instructions that never
+    write a register (compares, branches, traps, ...).
+    """
+    if name in RW_NO_WRITE:
+        return "kNoWrite"
+
+    if name.startswith("st"):
+        return "kStoreUpdate" if (name.endswith("u") or name.endswith("ux")) else "kStore"
+
+    if name.startswith("l") and (name.endswith("u") or name.endswith("ux")):
+        return "kLoadUpdate"
+
+    return "kDefault"
+
+
 def main():
     with open(HEADER) as f:
         text = f.read()
@@ -200,6 +252,29 @@ def main():
     ]
     for name in names:
         db.append(f"    CpuFeatures::PPC::{feature_of(name)}, // {name}")
+    db += [
+        "  };",
+        "",
+        "  //! Read/Write behavior class of each instruction (see InstAPI::query_rw_info()).",
+        "  enum class RWClass : uint8_t {",
+        "    //! First register operand is written, all other register operands are read.",
+        "    kDefault = 0,",
+        "    //! Store: all register operands are read, the memory operand (if any) is written.",
+        "    kStore = 1,",
+        "    //! Load with update: first register operand is written, the memory base is also written.",
+        "    kLoadUpdate = 2,",
+        "    //! Store with update: all register operands are read, the memory base is also written.",
+        "    kStoreUpdate = 3,",
+        "    //! No register operand is written (compares, branches, moves-to-special-registers, ...).",
+        "    kNoWrite = 4",
+        "  };",
+        "",
+        "  //! Read/Write class of each instruction indexed by Inst::Id.",
+        "  static constexpr RWClass inst_rw_classes[_kIdCount] = {",
+        "    RWClass::kDefault, // kIdNone",
+    ]
+    for name in names:
+        db.append(f"    RWClass::{rw_class_of(name)}, // {name}")
     db += [
         "  };",
         "} // {Inst}",

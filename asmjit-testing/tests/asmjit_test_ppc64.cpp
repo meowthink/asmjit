@@ -1262,6 +1262,164 @@ static bool testCpuFeatures() {
   return ok;
 }
 
+static bool testInstApiRWInfo() {
+  bool ok = true;
+
+  auto expect = [&](const char* name, bool cond) {
+    if (!cond) {
+      std::printf("inst RW info check '%s' FAILED\n", name);
+      ok = false;
+    }
+  };
+
+  // add rt, ra, rb: the first GPR is written, the other two are read.
+  {
+    Operand_ ops[] = { ppc::r3, ppc::r4, ppc::r5 };
+    InstRWInfo rw;
+    expect("rw add ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdAdd), ops, 3, &rw) == Error::kOk);
+    expect("rw add op0 write", rw.operand(0).is_write_only());
+    expect("rw add op1 read", rw.operand(1).is_read_only());
+    expect("rw add op2 read", rw.operand(2).is_read_only());
+  }
+
+  // ld rt, mem: rt is written, the memory operand is read (base read only).
+  {
+    Operand_ ops[] = { ppc::r3, ppc::ptr(ppc::r4) };
+    InstRWInfo rw;
+    expect("rw ld ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdLd), ops, 2, &rw) == Error::kOk);
+    expect("rw ld op0 write", rw.operand(0).is_write_only());
+    expect("rw ld mem read", rw.operand(1).is_read_only());
+    expect("rw ld base read", rw.operand(1).is_mem_base_read() && !rw.operand(1).is_mem_base_write());
+  }
+
+  // std rs, mem: rs is read, the memory operand is written.
+  {
+    Operand_ ops[] = { ppc::r3, ppc::ptr(ppc::r4) };
+    InstRWInfo rw;
+    expect("rw std ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdStd), ops, 2, &rw) == Error::kOk);
+    expect("rw std op0 read", rw.operand(0).is_read_only());
+    expect("rw std mem write", rw.operand(1).is_write_only());
+    expect("rw std base read", rw.operand(1).is_mem_base_read() && !rw.operand(1).is_mem_base_write());
+  }
+
+  // stdu rs, mem: update form - the memory base is also written (post-modify).
+  {
+    Operand_ ops[] = { ppc::r3, ppc::ptr(ppc::r4, -16) };
+    InstRWInfo rw;
+    expect("rw stdu ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdStdu), ops, 2, &rw) == Error::kOk);
+    expect("rw stdu op0 read", rw.operand(0).is_read_only());
+    expect("rw stdu mem write", rw.operand(1).is_write_only());
+    expect("rw stdu base rw", rw.operand(1).is_mem_base_read_write());
+    expect("rw stdu base post", rw.operand(1).is_mem_base_post_modify());
+  }
+
+  // lwzu rt, mem: 4-byte load with update - rt written, mem read, base written.
+  {
+    Operand_ ops[] = { ppc::r3, ppc::ptr(ppc::r4, 4) };
+    InstRWInfo rw;
+    expect("rw lwzu ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdLwzu), ops, 2, &rw) == Error::kOk);
+    expect("rw lwzu op0 write", rw.operand(0).is_write_only());
+    expect("rw lwzu mem read", rw.operand(1).is_read_only());
+    expect("rw lwzu mem size", rw.operand(1).read_byte_mask() == 0x000000000000000Fu);
+    expect("rw lwzu base rw", rw.operand(1).is_mem_base_read_write());
+    expect("rw lwzu base post", rw.operand(1).is_mem_base_post_modify());
+  }
+
+  // cmpd ra, rb: compare - both GPRs are read.
+  {
+    Operand_ ops[] = { ppc::r3, ppc::r4 };
+    InstRWInfo rw;
+    expect("rw cmpd ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdCmpd), ops, 2, &rw) == Error::kOk);
+    expect("rw cmpd op0 read", rw.operand(0).is_read_only());
+    expect("rw cmpd op1 read", rw.operand(1).is_read_only());
+  }
+
+  // cmpb ra, rs, rb: writes its first GPR (unlike CR-setting compares).
+  {
+    Operand_ ops[] = { ppc::r3, ppc::r4, ppc::r5 };
+    InstRWInfo rw;
+    expect("rw cmpb ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdCmpb), ops, 3, &rw) == Error::kOk);
+    expect("rw cmpb op0 write", rw.operand(0).is_write_only());
+    expect("rw cmpb op1 read", rw.operand(1).is_read_only());
+  }
+
+  // mtctr rs: move-to-special-register - source is only read.
+  {
+    Operand_ ops[] = { ppc::r3 };
+    InstRWInfo rw;
+    expect("rw mtctr ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdMtctr), ops, 1, &rw) == Error::kOk);
+    expect("rw mtctr read", rw.operand(0).is_read_only());
+  }
+
+  // Power ISA 3.0: xscmpeqdp/xscmpgedp/xscmpgtdp write an all-ones/all-zeros
+  // mask to XT (only xscmpodp/xscmpudp still write a CR field).
+  {
+    Operand_ ops[] = { ppc::vs0, ppc::vs1, ppc::vs2 };
+    InstRWInfo rw;
+    expect("rw xscmpeqdp ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdXscmpeqdp), ops, 3, &rw) == Error::kOk);
+    expect("rw xscmpeqdp op0 write", rw.operand(0).is_write_only());
+    expect("rw xscmpeqdp op1 read", rw.operand(1).is_read_only());
+  }
+  {
+    Operand_ ops[] = { imm(0), ppc::vs0, ppc::vs1 };
+    InstRWInfo rw;
+    expect("rw xscmpudp ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdXscmpudp), ops, 3, &rw) == Error::kOk);
+    expect("rw xscmpudp op1 read", rw.operand(1).is_read_only());
+    expect("rw xscmpudp op2 read", rw.operand(2).is_read_only());
+  }
+
+  // xstdivdp/xstsqrtdp: VSX scalar tests - the result goes to a CR field, so
+  // the VSX source operands are only read.
+  {
+    Operand_ ops[] = { imm(0), ppc::vs0, ppc::vs1 };
+    InstRWInfo rw;
+    expect("rw xstdivdp ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdXstdivdp), ops, 3, &rw) == Error::kOk);
+    expect("rw xstdivdp op1 read", rw.operand(1).is_read_only());
+    expect("rw xstdivdp op2 read", rw.operand(2).is_read_only());
+  }
+  {
+    Operand_ ops[] = { imm(0), ppc::vs0 };
+    InstRWInfo rw;
+    expect("rw xstsqrtdp ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdXstsqrtdp), ops, 2, &rw) == Error::kOk);
+    expect("rw xstsqrtdp read", rw.operand(1).is_read_only());
+  }
+
+  // xvadddp xt, xa, xb: first vector is written, 16-byte mask.
+  {
+    Operand_ ops[] = { ppc::vs0, ppc::vs1, ppc::vs2 };
+    InstRWInfo rw;
+    expect("rw xvadddp ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdXvadddp), ops, 3, &rw) == Error::kOk);
+    expect("rw xvadddp op0 write", rw.operand(0).is_write_only());
+    expect("rw xvadddp op1 read", rw.operand(1).is_read_only());
+    expect("rw xvadddp mask", rw.operand(0).write_byte_mask() == 0x000000000000FFFFu);
+  }
+
+  // vsel vrt, vra, vrb, vrc: first vector written, the rest read.
+  {
+    Operand_ ops[] = { ppc::v0, ppc::v1, ppc::v2, ppc::v3 };
+    InstRWInfo rw;
+    expect("rw vsel ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdVsel), ops, 4, &rw) == Error::kOk);
+    expect("rw vsel op0 write", rw.operand(0).is_write_only());
+    expect("rw vsel op1 read", rw.operand(1).is_read_only());
+    expect("rw vsel op3 read", rw.operand(3).is_read_only());
+  }
+
+  // beq label: no register operands.
+  {
+    InstRWInfo rw;
+    expect("rw beq ok", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(ppc::Inst::kIdBeq), nullptr, 0, &rw) == Error::kOk);
+    expect("rw beq no ops", rw.op_count() == 0);
+  }
+
+  // Invalid instruction id.
+  {
+    InstRWInfo rw;
+    expect("rw bad id", InstAPI::query_rw_info(Arch::kPPC64_LE, BaseInst(InstId(9999)), nullptr, 0, &rw) != Error::kOk);
+  }
+
+  return ok;
+}
+
 static bool checkEmit(const char* name,
                       void (*emitFn)(ppc::Assembler&),
                       void (*directFn)(ppc::Assembler&)) {
@@ -2790,6 +2948,7 @@ int main() {
   bool ok = true;
   ok &= testBasic();
   ok &= testCpuFeatures();
+  ok &= testInstApiRWInfo();
   ok &= testEmit();
   ok &= testValidate();
   ok &= testBigEndian();

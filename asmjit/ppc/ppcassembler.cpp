@@ -3051,24 +3051,6 @@ static Error emitInst(Assembler& asm_, InstId inst_id, const Operand_* ops, size
 
 } // {anonymous}
 
-namespace InstInternal {
-
-Error query_features(const BaseInst& inst, const Operand_* operands, size_t op_count, CpuFeatures* out) noexcept {
-  Support::maybe_unused(operands, op_count);
-
-  InstId inst_id = inst.inst_id();
-  if (ASMJIT_UNLIKELY(inst_id >= Inst::_kIdCount))
-    return make_error(Error::kInvalidInstruction);
-
-  CpuFeatures::PPC::Id feature = Inst::inst_features[inst_id];
-  out->reset();
-  if (feature != CpuFeatures::PPC::kNone)
-    out->ppc().add(feature);
-  return Error::kOk;
-}
-
-} // {InstInternal}
-
 Error Assembler::_emit(InstId inst_id, const Operand_& o0, const Operand_& o1, const Operand_& o2, const Operand_* op_ext) {
   if (ASMJIT_UNLIKELY(!_code)) {
     return report_error(make_error(Error::kNotInitialized));

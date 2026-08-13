@@ -261,6 +261,7 @@ set(ASMJIT_SRC
   asmjit/ppc/ppcfunc_p.h
   asmjit/ppc/ppcinst.h
   asmjit/ppc/ppc_emitinst.inc
+  asmjit/ppc/ppcinstapi.cpp
   asmjit/ppc/ppcinstdb_p.h
   asmjit/ppc/ppcinstapi_p.h
   asmjit/ppc/ppcruntime.cpp

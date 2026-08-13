@@ -20,6 +20,9 @@ namespace InstInternal {
 //! Queries the CPU features required by `inst` (see \ref InstAPI::query_features()).
 Error query_features(const BaseInst& inst, const Operand_* operands, size_t op_count, CpuFeatures* out) noexcept;
 
+//! Queries the read/write information of `inst` (see \ref InstAPI::query_rw_info()).
+Error query_rw_info(const BaseInst& inst, const Operand_* operands, size_t op_count, InstRWInfo* out) noexcept;
+
 } // {InstInternal}
 
 //! \}

@@ -105,6 +105,12 @@ Error InstAPI::query_rw_info(Arch arch, const BaseInst& inst, const Operand_* op
   }
 #endif
 
+#if !defined(ASMJIT_NO_PPC)
+  if (Environment::is_family_ppc(arch)) {
+    return ppc::InstInternal::query_rw_info(inst, operands, op_count, out);
+  }
+#endif
+
   return make_error(Error::kInvalidArch);
 }
 #endif // !ASMJIT_NO_INTROSPECTION
