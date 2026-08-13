@@ -8,6 +8,8 @@
 
 #include <asmjit/ppc/ppcassembler.h>
 #include <asmjit/ppc/ppccompiler.h>
+#include <asmjit/ppc/ppcemithelper_p.h>
+#include <asmjit/ppc/ppcrapass_p.h>
 
 ASMJIT_BEGIN_SUB_NAMESPACE(ppc)
 
@@ -17,6 +19,7 @@ ASMJIT_BEGIN_SUB_NAMESPACE(ppc)
 Compiler::Compiler(CodeHolder* code) noexcept : BaseCompiler() {
   _arch_mask = (uint64_t(1) << uint32_t(Arch::kPPC64_LE)) |
                (uint64_t(1) << uint32_t(Arch::kPPC64_BE));
+  init_emitter_funcs(this);
 
   if (code) {
     code->attach(this);
@@ -31,9 +34,11 @@ Compiler::~Compiler() noexcept {}
 Error Compiler::on_attach(CodeHolder& code) noexcept {
   ASMJIT_PROPAGATE(Base::on_attach(code));
 
-  // NOTE: The register allocation pass (PPCRAPass) is registered here once it
-  // is implemented. Until then the compiler can build the instruction stream,
-  // but `finalize()` reports an error instead of serializing virtual registers.
+  Error err = add_pass<PPCRAPass>();
+  if (ASMJIT_UNLIKELY(err != Error::kOk)) {
+    on_detach(code);
+    return err;
+  }
 
   _instruction_alignment = uint8_t(4);
   return Error::kOk;
@@ -44,20 +49,17 @@ Error Compiler::on_detach(CodeHolder& code) noexcept {
 }
 
 Error Compiler::on_reinit(CodeHolder& code) noexcept {
-  return Base::on_reinit(code);
+  Error err = Base::on_reinit(code);
+  if (err == Error::kOk) {
+    err = add_pass<PPCRAPass>();
+  }
+  return err;
 }
 
 // ppc::Compiler - Finalize
 // ========================
 
 Error Compiler::finalize() {
-  if (ASMJIT_UNLIKELY(_passes.is_empty())) {
-    // The RA pass is required to translate virtual registers to physical
-    // registers. It is not implemented yet, so fail instead of emitting code
-    // that would reference virtual registers.
-    return report_error(make_error(Error::kInvalidState));
-  }
-
   ASMJIT_PROPAGATE(run_passes());
   Assembler a(_code);
   a.add_encoding_options(encoding_options());

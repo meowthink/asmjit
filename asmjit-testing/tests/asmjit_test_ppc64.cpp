@@ -1517,12 +1517,194 @@ static bool testCompiler() {
   expect("compiler beq node", saw_beq);
   expect("compiler inst count", inst_count == 9);
 
-  // Without the RA pass, finalize() must report an error instead of
-  // serializing virtual registers.
-  expect("compiler finalize requires RA pass", cc.finalize() != Error::kOk);
+  // With the register allocation pass, finalize() must succeed.
+  expect("compiler finalize", cc.finalize() == Error::kOk);
 
   return ok;
 }
+
+#if ASMJIT_ARCH_PPC == 64
+static int64_t testCompilerHelperInc(int64_t x) { return x + 1; }
+
+static bool testCompilerExec() {
+  bool ok = true;
+
+  auto expect = [&](const char* name, bool cond) {
+    if (!cond) {
+      std::printf("compiler exec check '%s' FAILED\n", name);
+      ok = false;
+    }
+  };
+
+  // int64_t add(a, b) { return a + b; }
+  {
+    ppc::Runtime rt;
+    CodeHolder code;
+    code.init(rt.environment());
+    ppc::Compiler cc(&code);
+    FuncNode* f = cc.add_func(FuncSignature::build<int64_t, int64_t, int64_t>());
+    ppc::Gp a = cc.new_int64("a");
+    ppc::Gp b = cc.new_int64("b");
+    f->set_arg(0, a);
+    f->set_arg(1, b);
+    cc.add(a, a, b);
+    cc.ret(a);
+    cc.end_func();
+    int64_t (*fn)(int64_t, int64_t);
+    expect("exec add finalize", cc.finalize() == Error::kOk && rt.add(&fn, &code) == Error::kOk);
+    expect("exec add", fn(5, 7) == 12);
+  }
+
+  // Many live GPRs: spills + callee-saved saves.
+  {
+    ppc::Runtime rt;
+    CodeHolder code;
+    code.init(rt.environment());
+    ppc::Compiler cc(&code);
+    FuncNode* f = cc.add_func(FuncSignature::build<int64_t, int64_t>());
+    ppc::Gp a0 = cc.new_int64("a0");
+    f->set_arg(0, a0);
+    ppc::Gp r[40];
+    r[0] = a0;
+    for (int i = 1; i < 40; i++) {
+      r[i] = cc.new_int64();
+      cc.mov(r[i], imm(i));
+    }
+    for (int i = 1; i < 40; i++)
+      cc.add(r[0], r[0], r[i]);
+    cc.ret(r[0]);
+    cc.end_func();
+    int64_t (*fn)(int64_t);
+    expect("exec spill finalize", cc.finalize() == Error::kOk && rt.add(&fn, &code) == Error::kOk);
+    expect("exec spill", fn(100) == 100 + 39 * 40 / 2);
+  }
+
+  // Indirect call to a local helper (ELFv2: r12 must hold the entry address).
+  {
+    ppc::Runtime rt;
+    CodeHolder code;
+    code.init(rt.environment());
+    ppc::Compiler cc(&code);
+    FuncNode* f = cc.add_func(FuncSignature::build<int64_t, int64_t>());
+    ppc::Gp a = cc.new_int64("a");
+    f->set_arg(0, a);
+    InvokeNode* inv = nullptr;
+    cc.invoke(Out<InvokeNode*>(inv), imm(int64_t(&testCompilerHelperInc)), FuncSignature::build<int64_t, int64_t>());
+    inv->set_arg(0, a);
+    ppc::Gp r = cc.new_int64("r");
+    inv->set_ret(0, r);
+    cc.ret(r);
+    cc.end_func();
+    int64_t (*fn)(int64_t);
+    expect("exec call finalize", cc.finalize() == Error::kOk && rt.add(&fn, &code) == Error::kOk);
+    expect("exec call", fn(41) == 42);
+  }
+
+  // Loop with a conditional branch.
+  {
+    ppc::Runtime rt;
+    CodeHolder code;
+    code.init(rt.environment());
+    ppc::Compiler cc(&code);
+    FuncNode* f = cc.add_func(FuncSignature::build<int64_t, int64_t>());
+    ppc::Gp n = cc.new_int64("n");
+    f->set_arg(0, n);
+    ppc::Gp acc = cc.new_int64("acc");
+    cc.mov(acc, imm(0));
+    ppc::Gp one = cc.new_int64("one");
+    cc.mov(one, imm(1));
+    Label top = cc.new_label();
+    cc.bind(top);
+    cc.add(acc, acc, n);
+    cc.subf(n, one, n);
+    ppc::Gp zero = cc.new_gp64();
+    cc.mov(zero, imm(0));
+    cc.cmpld(n, zero);
+    cc.bne(top);
+    cc.ret(acc);
+    cc.end_func();
+    int64_t (*fn)(int64_t);
+    expect("exec loop finalize", cc.finalize() == Error::kOk && rt.add(&fn, &code) == Error::kOk);
+    expect("exec loop", fn(10) == 55);
+  }
+
+  // Floating-point args, arithmetic, and return.
+  {
+    ppc::Runtime rt;
+    CodeHolder code;
+    code.init(rt.environment());
+    ppc::Compiler cc(&code);
+    FuncNode* f = cc.add_func(FuncSignature::build<double, double, double>());
+    ppc::Fp a = cc.new_fp64("a");
+    ppc::Fp b = cc.new_fp64("b");
+    f->set_arg(0, a);
+    f->set_arg(1, b);
+    cc.fadd(a, a, b);
+    cc.fmul(a, a, b);
+    cc.ret(a);
+    cc.end_func();
+    double (*fn)(double, double);
+    expect("exec fp finalize", cc.finalize() == Error::kOk && rt.add(&fn, &code) == Error::kOk);
+    expect("exec fp", fn(1.5, 2.25) == (1.5 + 2.25) * 2.25);
+  }
+
+  // Stack arguments: 10 int64 args, the last two come from the parameter area.
+  {
+    ppc::Runtime rt;
+    CodeHolder code;
+    code.init(rt.environment());
+    ppc::Compiler cc(&code);
+    FuncNode* f = cc.add_func(FuncSignature::build<int64_t, int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t>());
+    ppc::Gp a[10];
+    for (int i = 0; i < 10; i++) {
+      a[i] = cc.new_int64();
+      f->set_arg(i, a[i]);
+    }
+    ppc::Gp sum = cc.new_int64("sum");
+    cc.mov(sum, imm(0));
+    for (int i = 0; i < 10; i++)
+      cc.add(sum, sum, a[i]);
+    cc.ret(sum);
+    cc.end_func();
+    int64_t (*fn)(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t);
+    expect("exec stackargs finalize", cc.finalize() == Error::kOk && rt.add(&fn, &code) == Error::kOk);
+    expect("exec stackargs", fn(1,2,3,4,5,6,7,8,9,10) == 55);
+  }
+
+  // Variadic call (printf): the FP argument's bits must be mirrored into the
+  // GPR slot (r5) and the parameter save area must be allocated.
+  {
+    ppc::Runtime rt;
+    CodeHolder code;
+    code.init(rt.environment());
+    ppc::Compiler cc(&code);
+    FuncNode* f = cc.add_func(FuncSignature::build<int64_t, int64_t, double>());
+    ppc::Gp x = cc.new_int64("x");
+    ppc::Fp d = cc.new_fp64("d");
+    f->set_arg(0, x);
+    f->set_arg(1, d);
+    FuncSignature sig(CallConvId::kCDecl);
+    sig.set_ret_t<int>();
+    sig.add_arg_t<const char*>();
+    sig.add_arg_t<int64_t>();
+    sig.add_arg_t<double>();
+    sig.set_va_index(1);
+    InvokeNode* inv = nullptr;
+    cc.invoke(Out<InvokeNode*>(inv), imm(int64_t(&printf)), sig);
+    inv->set_arg(0, imm(int64_t("x=%lld d=%.3f\n")));
+    inv->set_arg(1, x);
+    inv->set_arg(2, d);
+    cc.mov(x, imm(0));
+    cc.ret(x);
+    cc.end_func();
+    int64_t (*fn)(int64_t, double);
+    expect("exec printf finalize", cc.finalize() == Error::kOk && rt.add(&fn, &code) == Error::kOk);
+    expect("exec printf", fn(42, 3.5) == 0);
+  }
+
+  return ok;
+}
+#endif
 
 static bool checkEmit(const char* name,
                       void (*emitFn)(ppc::Assembler&),
@@ -3109,6 +3291,7 @@ int main() {
   ok &= testPrologVrSaves();
 #if ASMJIT_ARCH_PPC == 64
   ok &= testExecution();
+  ok &= testCompilerExec();
   ok &= testExecutionGccHelper();
   ok &= testExecutionStep5();
   ok &= testExecutionLargeFrame();

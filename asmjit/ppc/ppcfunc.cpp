@@ -54,14 +54,13 @@ ASMJIT_FAVOR_SIZE Error init_call_conv(CallConv& cc, CallConvId call_conv_id, co
   cc.set_preserved_regs(RegGroup::kGp,
     Support::bit_mask<RegMask>(14, 15, 16, 17, 18, 19, 20, 21, 22,
                                23, 24, 25, 26, 27, 28, 29, 30, 31));
-  // ELFv2 (LE) and ELFv1 (BE): FPRs f14..f31 and VMX registers v20..v31 are
-  // nonvolatile. FPR ids 14..31 map to VSRs 14..31, VMX ids 52..63 map to
-  // VSRs 52..63 (v20..v31), keeping both sets distinct in the vector group.
+  // ELFv2 (LE) and ELFv1 (BE): FPRs f14..f31 are nonvolatile. VMX v20..v31
+  // are also nonvolatile, but share the same allocator ids (20..31) because
+  // the register allocator exposes a single 32-register vector group; the
+  // prolog/epilog save both the FPR and the VMX register of any used id.
   cc.set_preserved_regs(RegGroup::kVec,
     Support::bit_mask<RegMask>(14, 15, 16, 17, 18, 19, 20, 21, 22,
-                               23, 24, 25, 26, 27, 28, 29, 30, 31) |
-    Support::bit_mask<RegMask>(52, 53, 54, 55, 56, 57, 58, 59,
-                               60, 61, 62, 63));
+                               23, 24, 25, 26, 27, 28, 29, 30, 31));
 
   cc.set_id(should_treat_as_cdecl(call_conv_id) ? CallConvId::kCDecl : call_conv_id);
   return Error::kOk;
@@ -72,7 +71,10 @@ ASMJIT_FAVOR_SIZE Error init_func_detail(FuncDetail& func, const FuncSignature& 
 
   const CallConv& cc = func.call_conv();
   const bool is_little_endian = cc.arch() == Arch::kPPC64_LE;
-  uint32_t stack_offset = is_little_endian ? 32 : 48;
+  // The parameter save area starts at SP+32 (LE) / SP+48 (BE) and is at least
+  // 8 doublewords long, so the first argument passed on the stack is placed
+  // at the end of that minimum area: SP+96 (LE) / SP+112 (BE).
+  uint32_t stack_offset = is_little_endian ? 96 : 112;
 
   if (func.has_ret()) {
     for (uint32_t value_index = 0; value_index < Globals::kMaxValuePack; value_index++) {
@@ -145,9 +147,9 @@ ASMJIT_FAVOR_SIZE Error init_func_detail(FuncDetail& func, const FuncSignature& 
         return make_error(Error::kInvalidRegType);
       }
 
-      // ELFv2/ELFv1: vector args are passed in v2..v13 (VSRs 34..45).
+      // ELFv2/ELFv1: vector args are passed in v2..v13.
       if (vec_pos < 12) {
-        uint32_t reg_id = vec_pos + 34;
+        uint32_t reg_id = vec_pos + 2;
         arg.assign_reg_data(reg_type, reg_id);
         func.add_used_regs(RegGroup::kVec, Support::bit_mask<RegMask>(reg_id));
         vec_pos++;

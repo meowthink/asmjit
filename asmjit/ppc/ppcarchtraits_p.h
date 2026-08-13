@@ -16,8 +16,11 @@ ASMJIT_BEGIN_SUB_NAMESPACE(ppc)
 //! \{
 
 static const constexpr ArchTraits ppc64_arch_traits = {
-  // SP/FP/LR/PC.
-  1, 31, 0xFFu, 0xFFu,
+  // SP/FP/LR/PC. The link register is modeled as r0 (the natural scratch used
+  // to save LR): this tells FuncFrame that the return address lives in a
+  // register rather than being pushed on the stack, so it doesn't add a
+  // phantom return-address slot to the frame size.
+  1, 31, 0, 0xFFu,
 
   // Reserved.
   { 0u, 0u, 0u },

@@ -259,6 +259,8 @@ set(ASMJIT_SRC
   asmjit/ppc/ppccpuinfo_p.h
   asmjit/ppc/ppccompiler.cpp
   asmjit/ppc/ppccompiler.h
+  asmjit/ppc/ppcemithelper.cpp
+  asmjit/ppc/ppcemithelper_p.h
   asmjit/ppc/ppcemitter.h
   asmjit/ppc/ppcfunc.cpp
   asmjit/ppc/ppcfunc_p.h
@@ -267,6 +269,8 @@ set(ASMJIT_SRC
   asmjit/ppc/ppcinstapi.cpp
   asmjit/ppc/ppcinstdb_p.h
   asmjit/ppc/ppcinstapi_p.h
+  asmjit/ppc/ppcrapass.cpp
+  asmjit/ppc/ppcrapass_p.h
   asmjit/ppc/ppcruntime.cpp
   asmjit/ppc/ppcruntime.h
 

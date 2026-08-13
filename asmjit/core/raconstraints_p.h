@@ -48,6 +48,21 @@ public:
         return Error::kOk;
       }
 
+#if !defined(ASMJIT_NO_PPC)
+      case Arch::kPPC64_LE:
+      case Arch::kPPC64_BE: {
+        // r0 is a literal zero in address/immediate forms, r1 is the stack
+        // pointer, r2 is the TOC pointer, and r13 is reserved for the thread
+        // pointer. FPRs, VMX, and VSX registers share the 32-register vector
+        // group.
+        _available_regs[RegGroup::kGp] = 0xFFFFFFFFu & ~Support::bit_mask<RegMask>(0, 1, 2, 13u);
+        _available_regs[RegGroup::kVec] = 0xFFFFFFFFu;
+        _available_regs[RegGroup::kMask] = 0;
+        _available_regs[RegGroup::kExtra] = 0;
+        return Error::kOk;
+      }
+#endif
+
       default:
         return make_error(Error::kInvalidArch);
     }
