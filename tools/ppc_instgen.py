@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Generates asmjit/ppc/ppcinst.h and asmjit/ppc/ppcinstdb_p.h from the
-PPC64 assembler method list.
+"""Generates asmjit/ppc/ppcinst.h, asmjit/ppc/ppcinstdb_p.h, and
+asmjit/ppc/ppcemitter.h from the PPC64 assembler method list.
 
 Every `ASMJIT_API Error <name>(...)` declared in ppcassembler.h becomes an
 instruction id `kId<Name>` (except the non-instruction helpers listed below).
 The instruction database records the operand signature of each instruction
-for assembler validation.
+for assembler validation, and the emitter header provides the instruction
+methods shared by the compiler (and future builder). Only instructions that
+have a case in the assembler's generic `emitInst()` switch are emitted, so the
+compiler surface stays in sync with what generic emission can serialize.
 Run from the repository root:
 
   python3 tools/ppc_instgen.py
@@ -16,8 +19,10 @@ import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HEADER = os.path.join(ROOT, "asmjit/ppc/ppcassembler.h")
+ASSEMBLER_CPP = os.path.join(ROOT, "asmjit/ppc/ppcassembler.cpp")
 OUTPUT = os.path.join(ROOT, "asmjit/ppc/ppcinst.h")
 OUTPUT_DB = os.path.join(ROOT, "asmjit/ppc/ppcinstdb_p.h")
+OUTPUT_EMITTER = os.path.join(ROOT, "asmjit/ppc/ppcemitter.h")
 OUTPUT_EMITINST = os.path.join(ROOT, "asmjit/ppc/ppc_emitinst.inc")
 
 # Non-instruction helpers and BaseAssembler overrides that must not become
@@ -156,6 +161,172 @@ def rw_class_of(name):
     return "kDefault"
 
 
+# ---------------------------------------------------------------------------
+# Generic emit (Assembler::_emit) generation.
+#
+# This section is self-contained: it only needs the assembler method list, so
+# it can be kept (and was originally introduced) as an independent block.
+# ---------------------------------------------------------------------------
+
+#! Instructions whose VSX register operands also accept FPR operands (both
+#! are valid VSRs, and the register allocator mirrors FPR bits to GPRs with
+#! `mfvsrd`).
+EMIT_VEC_OR_FP = {"mfvsrd", "mfvsrld", "mfvsrwz"}
+
+EMIT_OP_CHECK = {
+    "Gp": "opGp(ops[{i}])",
+    "Fp": "opFp(ops[{i}])",
+    "Vr": "opVec(ops[{i}])",
+    "Vsx": "opVec(ops[{i}])",
+    "const Mem&": "opMem(ops[{i}])",
+    "const Label&": "opLabel(ops[{i}])",
+    "int16_t": "opImm(ops[{i}])",
+    "uint16_t": "opImm(ops[{i}])",
+    "uint8_t": "opImm(ops[{i}])",
+    "int32_t": "opImm(ops[{i}])",
+    "uint32_t": "opImm(ops[{i}])",
+    "int64_t": "opImm(ops[{i}])",
+    "uint64_t": "opImm(ops[{i}])",
+}
+
+EMIT_OP_CAST = {
+    "Gp": "ops[{i}].as<Gp>()",
+    "Fp": "ops[{i}].as<Fp>()",
+    "Vr": "ops[{i}].as<Vr>()",
+    "Vsx": "ops[{i}].as<Vsx>()",
+    "const Mem&": "ops[{i}].as<Mem>()",
+    "const Label&": "ops[{i}].as<Label>()",
+    "int16_t": "immAs<int16_t>(ops[{i}])",
+    "uint16_t": "immAs<uint16_t>(ops[{i}])",
+    "uint8_t": "immAs<uint8_t>(ops[{i}])",
+    "int32_t": "immAs<int32_t>(ops[{i}])",
+    "uint32_t": "immAs<uint32_t>(ops[{i}])",
+    "int64_t": "immAs<int64_t>(ops[{i}])",
+    "uint64_t": "immAs<uint64_t>(ops[{i}])",
+}
+
+
+def emitinst_parse_params(args):
+    """Returns [(cpp_type, default_expr)] for the non-bool params of `args`."""
+    result = []
+    for param in args.split(","):
+        param = param.strip()
+        if not param:
+            continue
+        has_default = "=" in param
+        lhs = param.split("=", 1)[0].strip()
+        default = param.split("=", 1)[1].strip() if has_default else None
+        type_name = lhs.rsplit(" ", 1)[0].strip()
+        if type_name == "bool":
+            continue  # Trailing Rc/Oe flags are not exposed through generic emit().
+        result.append((type_name, default))
+    return result
+
+
+def gen_emit_inst_case(name, args):
+    """Generates the Assembler::_emit() dispatch case for `name`.
+
+    The case validates the operands against the generated signature and calls
+    the dedicated assembler method. Optional trailing immediates (C++ default
+    arguments such as `cmpd`'s `bf`) accept a shorter operand list.
+    """
+    plist = emitinst_parse_params(args)
+    required = sum(1 for _, default in plist if default is None)
+    total = len(plist)
+
+    checks = [f"op_count < {required}", f"op_count > {total}"]
+    for i, (t, default) in enumerate(plist):
+        if t == "Vsx" and name in EMIT_VEC_OR_FP:
+            check = f"(opFp(ops[{i}]) || opVec(ops[{i}]))"
+        else:
+            check = EMIT_OP_CHECK[t].format(i=i)
+        if i >= required:
+            check = f"(op_count > {i} && !{check})"
+        else:
+            check = f"!{check}"
+        checks.append(check)
+
+    args_list = []
+    for i, (t, default) in enumerate(plist):
+        cast = EMIT_OP_CAST[t].format(i=i)
+        if i >= required:
+            args_list.append(f"op_count > {i} ? {cast} : {default if default is not None else '0'}")
+        else:
+            args_list.append(cast)
+
+    id_name = f"kId{name[0].upper()}{name[1:]}"
+    cond = " || ".join(checks)
+    return "\n".join([
+        f"    case Inst::{id_name}:",
+        f"      if (ASMJIT_UNLIKELY({cond}))",
+        "        return emitInvalidOperand();",
+        f"      return asm_.{name}({', '.join(args_list)});",
+    ])
+
+
+def parse_emitter_params(args):
+    """Returns [(cpp_type, param_name, default_expr)] for non-bool params."""
+    result = []
+    for param in args.split(","):
+        param = param.strip()
+        if not param:
+            continue
+        has_default = "=" in param
+        lhs = param.split("=", 1)[0].strip()
+        default = param.split("=", 1)[1].strip() if has_default else None
+        parts = lhs.rsplit(" ", 1)
+        type_name = parts[0].strip()
+        pname = parts[1].strip() if len(parts) > 1 else ""
+        if type_name == "bool":
+            continue  # Trailing Rc/Oe flags are not exposed through generic emit().
+        result.append((type_name, pname, default))
+    return result
+
+
+EMITTER_TYPE_MAP = {
+    "Gp": "const Gp&",
+    "Fp": "const Fp&",
+    "Vr": "const Vr&",
+    "Vsx": "const Vsx&",
+    "const Mem&": "const Mem&",
+    "const Label&": "const Label&",
+    "int16_t": "const Imm&",
+    "uint16_t": "const Imm&",
+    "uint8_t": "const Imm&",
+    "int32_t": "const Imm&",
+    "uint32_t": "const Imm&",
+    "int64_t": "const Imm&",
+    "uint64_t": "const Imm&",
+}
+
+
+def gen_emitter_method(name, params):
+    """Generates a single compiler emitter method body."""
+    args = [(pname or f"o{i}", EMITTER_TYPE_MAP[t]) for i, (t, pname, _) in enumerate(params)]
+    sig_parts = []
+    for i, ((_, _, default), (aname, cpp_type)) in enumerate(zip(params, args)):
+        sig = f"{cpp_type} {aname}"
+        if default is not None:
+            sig += f" = imm({default})"
+        sig_parts.append(sig)
+    call_args = ", ".join(aname for aname, _ in args)
+    id_name = f"kId{name[0].upper()}{name[1:]}"
+    if call_args:
+        call = f"_emitI(Inst::{id_name}, {call_args})"
+    else:
+        call = f"_emitI(Inst::{id_name})"
+    return f"  inline Error {name}({', '.join(sig_parts)}) {{ return _emitter()->{call}; }}"
+
+
+def emit_inst_supported_names():
+    """Returns the set of instruction names that `Assembler::_emit()` supports.
+
+    Since `emitInst` is generated from the same method list, every instruction
+    is supported; this returns `None` to express that.
+    """
+    return None
+
+
 def main():
     with open(HEADER) as f:
         text = f.read()
@@ -163,6 +334,7 @@ def main():
     decls = re.findall(r"ASMJIT_API Error ([A-Za-z_][A-Za-z0-9_]*)\(([^)]*)\)", text)
     names = [n for n, _ in decls if n not in EXCLUDED]
     params = {n: a for n, a in decls if n not in EXCLUDED}
+    supported = emit_inst_supported_names()
 
     lines = [
         "// This file is part of AsmJit project <https://asmjit.com>",
@@ -288,6 +460,58 @@ def main():
     with open(OUTPUT_DB, "w") as f:
         f.write("\n".join(db))
 
+    emitter = [
+        "// This file is part of AsmJit project <https://asmjit.com>",
+        "//",
+        "// See <asmjit/core.h> or LICENSE.md for license and copyright information",
+        "// SPDX-License-Identifier: Zlib",
+        "",
+        "// Generated by tools/ppc_instgen.py - do not edit manually.",
+        "",
+        "#ifndef ASMJIT_PPC_PPCEMITTER_H_INCLUDED",
+        "#define ASMJIT_PPC_PPCEMITTER_H_INCLUDED",
+        "",
+        "#include <asmjit/core/emitter.h>",
+        "#include <asmjit/ppc/ppcassembler.h>",
+        "#include <asmjit/ppc/ppcinst.h>",
+        "",
+        "ASMJIT_BEGIN_SUB_NAMESPACE(ppc)",
+        "",
+        "//! Instruction emitter methods shared by the PPC64 compiler.",
+        "//!",
+        "//! The method set mirrors the instructions supported by the assembler's",
+        "//! generic `_emit()` path, so everything emitted here can be serialized.",
+        "template<typename This>",
+        "struct EmitterExplicitT {",
+        "  //! \\cond",
+        "  ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF ASMJIT_INLINE_NODEBUG This* _emitter() noexcept { return static_cast<This*>(this); }",
+        "  ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF ASMJIT_INLINE_NODEBUG const This* _emitter() const noexcept { return static_cast<const This*>(this); }",
+        "  //! \\endcond",
+        "",
+        "  //! \\name Instruction Emission",
+        "  //! \\{",
+        "",
+    ]
+    emitted = 0
+    for name in names:
+        if supported is not None and name not in supported:
+            continue
+        emitter.append(gen_emitter_method(name, parse_emitter_params(params[name])))
+        emitted += 1
+    emitter += [
+        "",
+        "  //! \\}",
+        "};",
+        "",
+        "ASMJIT_END_SUB_NAMESPACE",
+        "",
+        "#endif // ASMJIT_PPC_PPCEMITTER_H_INCLUDED",
+        "",
+    ]
+
+    with open(OUTPUT_EMITTER, "w") as f:
+        f.write("\n".join(emitter))
+
     emitinst = [
         "// This file is part of AsmJit project <https://asmjit.com>",
         "//",
@@ -311,112 +535,9 @@ def main():
     with open(OUTPUT_EMITINST, "w") as f:
         f.write("\n".join(emitinst))
 
-
     print(f"generated {len(names)} instruction ids -> {OUTPUT}, {OUTPUT_DB}")
-    print(f"generated {len(names)} emitInst cases -> {OUTPUT_EMITINST}")
-
-
-# Generic emit (Assembler::_emit) generation.
-#
-# This section is self-contained: it only needs the assembler method list, so
-# it can be kept (and was originally introduced) as an independent block.
-# ---------------------------------------------------------------------------
-
-#! Instructions whose VSX register operands also accept FPR operands (both
-#! are valid VSRs, and the register allocator mirrors FPR bits to GPRs with
-#! `mfvsrd`).
-EMIT_VEC_OR_FP = {"mfvsrd", "mfvsrld", "mfvsrwz"}
-
-EMIT_OP_CHECK = {
-    "Gp": "opGp(ops[{i}])",
-    "Fp": "opFp(ops[{i}])",
-    "Vr": "opVec(ops[{i}])",
-    "Vsx": "opVec(ops[{i}])",
-    "const Mem&": "opMem(ops[{i}])",
-    "const Label&": "opLabel(ops[{i}])",
-    "int16_t": "opImm(ops[{i}])",
-    "uint16_t": "opImm(ops[{i}])",
-    "uint8_t": "opImm(ops[{i}])",
-    "int32_t": "opImm(ops[{i}])",
-    "uint32_t": "opImm(ops[{i}])",
-    "int64_t": "opImm(ops[{i}])",
-    "uint64_t": "opImm(ops[{i}])",
-}
-
-EMIT_OP_CAST = {
-    "Gp": "ops[{i}].as<Gp>()",
-    "Fp": "ops[{i}].as<Fp>()",
-    "Vr": "ops[{i}].as<Vr>()",
-    "Vsx": "ops[{i}].as<Vsx>()",
-    "const Mem&": "ops[{i}].as<Mem>()",
-    "const Label&": "ops[{i}].as<Label>()",
-    "int16_t": "immAs<int16_t>(ops[{i}])",
-    "uint16_t": "immAs<uint16_t>(ops[{i}])",
-    "uint8_t": "immAs<uint8_t>(ops[{i}])",
-    "int32_t": "immAs<int32_t>(ops[{i}])",
-    "uint32_t": "immAs<uint32_t>(ops[{i}])",
-    "int64_t": "immAs<int64_t>(ops[{i}])",
-    "uint64_t": "immAs<uint64_t>(ops[{i}])",
-}
-
-
-def emitinst_parse_params(args):
-    """Returns [(cpp_type, default_expr)] for the non-bool params of `args`."""
-    result = []
-    for param in args.split(","):
-        param = param.strip()
-        if not param:
-            continue
-        has_default = "=" in param
-        lhs = param.split("=", 1)[0].strip()
-        default = param.split("=", 1)[1].strip() if has_default else None
-        type_name = lhs.rsplit(" ", 1)[0].strip()
-        if type_name == "bool":
-            continue  # Trailing Rc/Oe flags are not exposed through generic emit().
-        result.append((type_name, default))
-    return result
-
-
-def gen_emit_inst_case(name, args):
-    """Generates the Assembler::_emit() dispatch case for `name`.
-
-    The case validates the operands against the generated signature and calls
-    the dedicated assembler method. Optional trailing immediates (C++ default
-    arguments such as `cmpd`'s `bf`) accept a shorter operand list.
-    """
-    plist = emitinst_parse_params(args)
-    required = sum(1 for _, default in plist if default is None)
-    total = len(plist)
-
-    checks = [f"op_count < {required}", f"op_count > {total}"]
-    for i, (t, default) in enumerate(plist):
-        if t == "Vsx" and name in EMIT_VEC_OR_FP:
-            check = f"(opFp(ops[{i}]) || opVec(ops[{i}]))"
-        else:
-            check = EMIT_OP_CHECK[t].format(i=i)
-        if i >= required:
-            check = f"(op_count > {i} && !{check})"
-        else:
-            check = f"!{check}"
-        checks.append(check)
-
-    args_list = []
-    for i, (t, default) in enumerate(plist):
-        cast = EMIT_OP_CAST[t].format(i=i)
-        if i >= required:
-            args_list.append(f"op_count > {i} ? {cast} : {default if default is not None else '0'}")
-        else:
-            args_list.append(cast)
-
-    id_name = f"kId{name[0].upper()}{name[1:]}"
-    cond = " || ".join(checks)
-    return "\n".join([
-        f"    case Inst::{id_name}:",
-        f"      if (ASMJIT_UNLIKELY({cond}))",
-        "        return emitInvalidOperand();",
-        f"      return asm_.{name}({', '.join(args_list)});",
-    ])
-
+    print(f"generated {emitted} emitter methods -> {OUTPUT_EMITTER}")
+    print(f"generated {emitted_cases} emitInst cases -> {OUTPUT_EMITINST}")
 
 
 if __name__ == "__main__":

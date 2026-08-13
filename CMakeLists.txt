@@ -257,6 +257,9 @@ set(ASMJIT_SRC
   asmjit/ppc/ppcassembler.cpp
   asmjit/ppc/ppcassembler.h
   asmjit/ppc/ppccpuinfo_p.h
+  asmjit/ppc/ppccompiler.cpp
+  asmjit/ppc/ppccompiler.h
+  asmjit/ppc/ppcemitter.h
   asmjit/ppc/ppcfunc.cpp
   asmjit/ppc/ppcfunc_p.h
   asmjit/ppc/ppcinst.h

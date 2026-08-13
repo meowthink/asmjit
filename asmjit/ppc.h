@@ -11,6 +11,9 @@
 #if !defined(ASMJIT_NO_PPC)
   #include <asmjit/ppc/ppcassembler.h>
   #include <asmjit/ppc/ppcruntime.h>
+#if !defined(ASMJIT_NO_COMPILER)
+  #include <asmjit/ppc/ppccompiler.h>
+#endif
 #endif
 
 #endif // ASMJIT_PPC_H_INCLUDED

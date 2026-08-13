@@ -1420,6 +1420,110 @@ static bool testInstApiRWInfo() {
   return ok;
 }
 
+static bool testCompiler() {
+  bool ok = true;
+
+  auto expect = [&](const char* name, bool cond) {
+    if (!cond) {
+      std::printf("compiler check '%s' FAILED\n", name);
+      ok = false;
+    }
+  };
+
+  CodeHolder code;
+  if (code.init(Environment(Arch::kPPC64_LE, SubArch::kUnknown, Vendor::kUnknown,
+                            Platform::kLinux, PlatformABI::kGNU, ObjectFormat::kJIT)) != Error::kOk)
+    return false;
+
+  ppc::Compiler cc(&code);
+
+  FuncNode* func = cc.add_func(FuncSignature::build<int64_t, int64_t, int64_t>(CallConvId::kCDecl));
+  expect("compiler add_func", func != nullptr);
+
+  ppc::Gp a = cc.new_int64("a");
+  ppc::Gp b = cc.new_int64("b");
+  ppc::Gp t = cc.new_gpz("t");
+  ppc::Fp f = cc.new_fp64("f");
+  ppc::Vr v = cc.new_vec128("v");
+  ppc::Vsx x = cc.new_vsx128("x");
+
+  // Virtual register types.
+  expect("compiler new_gp type", a.reg_type() == RegType::kGp64);
+  expect("compiler new_fp type", f.reg_type() == RegType::kVec64);
+  expect("compiler new_vec type", v.reg_type() == RegType::kVec128);
+  expect("compiler new_vsx type", x.reg_type() == RegType::kVec128);
+  expect("compiler virt id", a.id() >= Operand::kVirtIdMin);
+
+  func->set_arg(0, a);
+  func->set_arg(1, b);
+
+  // Instruction emission (generic emitter surface).
+  cc.add(t, a, b);
+  cc.mov(t, imm(12345)); // li t, 12345
+  cc.fadd(f, f, f);
+  cc.mov(f, f); // fmr
+  cc.vaddubm(v, v, v);
+  cc.xxlor(x, x, x);
+  cc.ld(t, ppc::ptr(a));
+  cc.std(t, ppc::ptr(b));
+
+  Label loop = cc.new_label();
+  cc.bind(loop);
+  cc.beq(loop);
+
+  cc.ret(t);
+  cc.end_func();
+
+  // Walk the node list and check the emitted instruction ids.
+  bool saw_add = false;
+  bool saw_li = false;
+  bool saw_fadd = false;
+  bool saw_fmr = false;
+  bool saw_vaddubm = false;
+  bool saw_xxlor = false;
+  bool saw_ld = false;
+  bool saw_std = false;
+  bool saw_beq = false;
+  uint32_t inst_count = 0;
+
+  for (BaseNode* node = func->next(); node != func->end_node(); node = node->next()) {
+    // Note: `is_inst()` also returns true for FuncRetNode ("acts as inst"),
+    // so count only real instruction nodes here.
+    if (node->type() != NodeType::kInst)
+      continue;
+    inst_count++;
+    InstNode* inst = node->as<InstNode>();
+    switch (inst->inst_id()) {
+      case ppc::Inst::kIdAdd: saw_add = true; break;
+      case ppc::Inst::kIdLi: saw_li = true; break;
+      case ppc::Inst::kIdFadd: saw_fadd = true; break;
+      case ppc::Inst::kIdFmr: saw_fmr = true; break;
+      case ppc::Inst::kIdVaddubm: saw_vaddubm = true; break;
+      case ppc::Inst::kIdXxlor: saw_xxlor = true; break;
+      case ppc::Inst::kIdLd: saw_ld = true; break;
+      case ppc::Inst::kIdStd: saw_std = true; break;
+      case ppc::Inst::kIdBeq: saw_beq = true; break;
+    }
+  }
+
+  expect("compiler add node", saw_add);
+  expect("compiler li node", saw_li);
+  expect("compiler fadd node", saw_fadd);
+  expect("compiler fmr node", saw_fmr);
+  expect("compiler vaddubm node", saw_vaddubm);
+  expect("compiler xxlor node", saw_xxlor);
+  expect("compiler ld node", saw_ld);
+  expect("compiler std node", saw_std);
+  expect("compiler beq node", saw_beq);
+  expect("compiler inst count", inst_count == 9);
+
+  // Without the RA pass, finalize() must report an error instead of
+  // serializing virtual registers.
+  expect("compiler finalize requires RA pass", cc.finalize() != Error::kOk);
+
+  return ok;
+}
+
 static bool checkEmit(const char* name,
                       void (*emitFn)(ppc::Assembler&),
                       void (*directFn)(ppc::Assembler&)) {
@@ -2949,6 +3053,7 @@ int main() {
   ok &= testBasic();
   ok &= testCpuFeatures();
   ok &= testInstApiRWInfo();
+  ok &= testCompiler();
   ok &= testEmit();
   ok &= testValidate();
   ok &= testBigEndian();

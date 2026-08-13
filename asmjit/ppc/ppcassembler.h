@@ -172,44 +172,50 @@ static constexpr Vsx vs62 { 62 };
 static constexpr Vsx vs63 { 63 };
 
 //! PowerPC VMX (Altivec) register.
+//!
+//! \note VMX registers v0..v31 alias VSRs 32..63, so their ids are 32..63
+//! (the VSR number). This keeps the FPRs (VSRs 0..31), VMX registers
+//! (VSRs 32..63), and VSX registers (VSRs 0..63) distinct in a single
+//! vector register file, which is what the compiler and register allocator
+//! rely on.
 class Vr : public Reg {
 public:
   ASMJIT_DEFINE_FINAL_REG(Vr, Reg, RegTraits<RegType::kVec128>)
 };
 
 //! Vector register constants.
-static constexpr Vr v0 { 0 };
-static constexpr Vr v1 { 1 };
-static constexpr Vr v2 { 2 };
-static constexpr Vr v3 { 3 };
-static constexpr Vr v4 { 4 };
-static constexpr Vr v5 { 5 };
-static constexpr Vr v6 { 6 };
-static constexpr Vr v7 { 7 };
-static constexpr Vr v8 { 8 };
-static constexpr Vr v9 { 9 };
-static constexpr Vr v10 { 10 };
-static constexpr Vr v11 { 11 };
-static constexpr Vr v12 { 12 };
-static constexpr Vr v13 { 13 };
-static constexpr Vr v14 { 14 };
-static constexpr Vr v15 { 15 };
-static constexpr Vr v16 { 16 };
-static constexpr Vr v17 { 17 };
-static constexpr Vr v18 { 18 };
-static constexpr Vr v19 { 19 };
-static constexpr Vr v20 { 20 };
-static constexpr Vr v21 { 21 };
-static constexpr Vr v22 { 22 };
-static constexpr Vr v23 { 23 };
-static constexpr Vr v24 { 24 };
-static constexpr Vr v25 { 25 };
-static constexpr Vr v26 { 26 };
-static constexpr Vr v27 { 27 };
-static constexpr Vr v28 { 28 };
-static constexpr Vr v29 { 29 };
-static constexpr Vr v30 { 30 };
-static constexpr Vr v31 { 31 };
+static constexpr Vr v0 { 32 };
+static constexpr Vr v1 { 33 };
+static constexpr Vr v2 { 34 };
+static constexpr Vr v3 { 35 };
+static constexpr Vr v4 { 36 };
+static constexpr Vr v5 { 37 };
+static constexpr Vr v6 { 38 };
+static constexpr Vr v7 { 39 };
+static constexpr Vr v8 { 40 };
+static constexpr Vr v9 { 41 };
+static constexpr Vr v10 { 42 };
+static constexpr Vr v11 { 43 };
+static constexpr Vr v12 { 44 };
+static constexpr Vr v13 { 45 };
+static constexpr Vr v14 { 46 };
+static constexpr Vr v15 { 47 };
+static constexpr Vr v16 { 48 };
+static constexpr Vr v17 { 49 };
+static constexpr Vr v18 { 50 };
+static constexpr Vr v19 { 51 };
+static constexpr Vr v20 { 52 };
+static constexpr Vr v21 { 53 };
+static constexpr Vr v22 { 54 };
+static constexpr Vr v23 { 55 };
+static constexpr Vr v24 { 56 };
+static constexpr Vr v25 { 57 };
+static constexpr Vr v26 { 58 };
+static constexpr Vr v27 { 59 };
+static constexpr Vr v28 { 60 };
+static constexpr Vr v29 { 61 };
+static constexpr Vr v30 { 62 };
+static constexpr Vr v31 { 63 };
 
 //! ELFv1 function descriptor
 struct FunctionDescriptor {

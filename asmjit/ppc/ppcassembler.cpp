@@ -39,6 +39,14 @@ static inline uint32_t encode_fp(uint32_t op, uint32_t xo, uint32_t frt, uint32_
          (xo << 1) | (rc ? 1u : 0u);
 }
 
+//! Maps a VMX register id (a VSR index in range 32..63) to the 5-bit VR field
+//! used by VMX instruction encodings (v0..v31 = VSRs 32..63).
+static inline uint32_t vr_field(uint32_t id) noexcept {
+  // Vr register ids are VSR indices 32..63; literal field values (fixed VRA
+  // codes, UIM fields) are 0..31 and pass through unchanged.
+  return id >= 32 ? id - 32 : id;
+}
+
 Assembler::Assembler(CodeHolder* code) noexcept
   : BaseAssembler() {
   _arch_mask = (uint64_t(1) << uint32_t(Arch::kPPC64_LE)) |
@@ -1780,23 +1788,23 @@ Error Assembler::mtvsrwz(Vsx xt, Gp ra) {
 }
 
 Error Assembler::mfvrd(Gp rt, Vr vr) {
-  return emit32((31u << 26) | (vr.id() << 21) | (rt.id() << 16) | (51u << 1) | 1u);
+  return emit32((31u << 26) | (vr_field(vr.id()) << 21) | (rt.id() << 16) | (51u << 1) | 1u);
 }
 
 Error Assembler::mfvrwz(Gp rt, Vr vr) {
-  return emit32((31u << 26) | (vr.id() << 21) | (rt.id() << 16) | (115u << 1) | 1u);
+  return emit32((31u << 26) | (vr_field(vr.id()) << 21) | (rt.id() << 16) | (115u << 1) | 1u);
 }
 
 Error Assembler::mtvrd(Vr vr, Gp rt) {
-  return emit32((31u << 26) | (vr.id() << 21) | (rt.id() << 16) | (179u << 1) | 1u);
+  return emit32((31u << 26) | (vr_field(vr.id()) << 21) | (rt.id() << 16) | (179u << 1) | 1u);
 }
 
 Error Assembler::mtvrwa(Vr vr, Gp rt) {
-  return emit32((31u << 26) | (vr.id() << 21) | (rt.id() << 16) | (211u << 1) | 1u);
+  return emit32((31u << 26) | (vr_field(vr.id()) << 21) | (rt.id() << 16) | (211u << 1) | 1u);
 }
 
 Error Assembler::mtvrwz(Vr vr, Gp rt) {
-  return emit32((31u << 26) | (vr.id() << 21) | (rt.id() << 16) | (243u << 1) | 1u);
+  return emit32((31u << 26) | (vr_field(vr.id()) << 21) | (rt.id() << 16) | (243u << 1) | 1u);
 }
 
 Error Assembler::lxsd(Vsx xt, const Mem& m) {
@@ -2407,378 +2415,378 @@ Error Assembler::xxswapd(Vsx xt, Vsx xa) {
 // VX-form VMX: vrt = f(vra, vrb), XO split across vrc (bits 21-25) and xo (26-30).
 static inline uint32_t encode_vx(uint32_t vrc, uint32_t xo, uint32_t vrt, uint32_t vra,
                                  uint32_t vrb, bool rc = false) noexcept {
-  return (4u << 26) | (vrt << 21) | (vra << 16) | (vrb << 11) | (vrc << 6) | (xo << 1) |
+  return (4u << 26) | (vr_field(vrt) << 21) | (vr_field(vra) << 16) | (vr_field(vrb) << 11) | (vrc << 6) | (xo << 1) |
          (rc ? 1u : 0u);
 }
 
 // VA-form VMX: vrt = f(vra, vrb, vrc), 5-bit XO in the low field.
 static inline uint32_t encode_va(uint32_t xo, uint32_t vrt, uint32_t vra, uint32_t vrb,
                                  uint32_t vrc, bool rc = false) noexcept {
-  return (4u << 26) | (vrt << 21) | (vra << 16) | (vrb << 11) | (vrc << 6) | (xo << 1) |
+  return (4u << 26) | (vr_field(vrt) << 21) | (vr_field(vra) << 16) | (vr_field(vrb) << 11) | (vr_field(vrc) << 6) | (xo << 1) |
          (rc ? 1u : 0u);
 }
 
 Error Assembler::lvx(Vr vrt, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index() || m.has_offset()))
     return report_error(make_error(Error::kInvalidAddress));
-  return emit32((31u << 26) | (vrt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (103u << 1));
+  return emit32((31u << 26) | (vr_field(vr_field(vrt.id())) << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (103u << 1));
 }
 
 Error Assembler::lvebx(Vr vrt, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index() || m.has_offset()))
     return report_error(make_error(Error::kInvalidAddress));
-  return emit32((31u << 26) | (vrt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (7u << 1));
+  return emit32((31u << 26) | (vr_field(vrt.id()) << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (7u << 1));
 }
 
 Error Assembler::lvehx(Vr vrt, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index() || m.has_offset()))
     return report_error(make_error(Error::kInvalidAddress));
-  return emit32((31u << 26) | (vrt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (39u << 1));
+  return emit32((31u << 26) | (vr_field(vrt.id()) << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (39u << 1));
 }
 
 Error Assembler::lvewx(Vr vrt, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index() || m.has_offset()))
     return report_error(make_error(Error::kInvalidAddress));
-  return emit32((31u << 26) | (vrt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (71u << 1));
+  return emit32((31u << 26) | (vr_field(vrt.id()) << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (71u << 1));
 }
 
 Error Assembler::lvxl(Vr vrt, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index() || m.has_offset()))
     return report_error(make_error(Error::kInvalidAddress));
-  return emit32((31u << 26) | (vrt.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (359u << 1));
+  return emit32((31u << 26) | (vr_field(vrt.id()) << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (359u << 1));
 }
 
 Error Assembler::stvx(Vr vrs, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index() || m.has_offset()))
     return report_error(make_error(Error::kInvalidAddress));
-  return emit32((31u << 26) | (vrs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (231u << 1));
+  return emit32((31u << 26) | (vr_field(vrs.id()) << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (231u << 1));
 }
 
 Error Assembler::stvebx(Vr vrs, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index() || m.has_offset()))
     return report_error(make_error(Error::kInvalidAddress));
-  return emit32((31u << 26) | (vrs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (135u << 1));
+  return emit32((31u << 26) | (vr_field(vrs.id()) << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (135u << 1));
 }
 
 Error Assembler::stvehx(Vr vrs, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index() || m.has_offset()))
     return report_error(make_error(Error::kInvalidAddress));
-  return emit32((31u << 26) | (vrs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (167u << 1));
+  return emit32((31u << 26) | (vr_field(vrs.id()) << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (167u << 1));
 }
 
 Error Assembler::stvewx(Vr vrs, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index() || m.has_offset()))
     return report_error(make_error(Error::kInvalidAddress));
-  return emit32((31u << 26) | (vrs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (199u << 1));
+  return emit32((31u << 26) | (vr_field(vrs.id()) << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (199u << 1));
 }
 
 Error Assembler::stvxl(Vr vrs, const Mem& m) {
   if (ASMJIT_UNLIKELY(!m.has_base() || !m.has_index() || m.has_offset()))
     return report_error(make_error(Error::kInvalidAddress));
-  return emit32((31u << 26) | (vrs.id() << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (487u << 1));
+  return emit32((31u << 26) | (vr_field(vrs.id()) << 21) | (m.base_id() << 16) | (m.index_id() << 11) | (487u << 1));
 }
 
-Error Assembler::vand(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vandc(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vor(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(18u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vxor(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(19u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vnor(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(20u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::veqv(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(26u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vnand(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(22u, 2u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vand(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vandc(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vor(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(18u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vxor(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(19u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vnor(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(20u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::veqv(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(26u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vnand(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(22u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 
-Error Assembler::vaddubm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vadduhm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vadduwm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vaddudm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vaddcuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsububm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsubuhm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsubuwm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(18u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsubudm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(19u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsubcuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(22u, 0u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vaddubm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vadduhm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vadduwm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vaddudm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vaddcuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsububm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsubuhm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsubuwm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(18u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsubudm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(19u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsubcuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(22u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 
-Error Assembler::vsl(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(7u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsr(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(11u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsld(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(23u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsrd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(27u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsrad(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(15u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vslw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsrw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(10u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsraw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(14u, 2u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vsl(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(7u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsr(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(11u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsld(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(23u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsrd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(27u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsrad(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(15u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vslw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsrw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(10u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsraw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(14u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 
-Error Assembler::vcmpequb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 3u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vcmpequh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 3u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vcmpequw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 3u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vcmpequd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 3u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vcmpgtsb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(12u, 3u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vcmpgtsh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(13u, 3u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vcmpgtsw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(14u, 3u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vcmpgtsd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(15u, 3u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vcmpgtub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(8u, 3u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vcmpgtuh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 3u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vcmpgtuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(10u, 3u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vcmpgtud(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(11u, 3u, vrt.id(), vra.id(), vrb.id(), true)); }
+Error Assembler::vcmpequb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vcmpequh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vcmpequw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vcmpequd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vcmpgtsb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(12u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vcmpgtsh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(13u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vcmpgtsw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(14u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vcmpgtsd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(15u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vcmpgtub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(8u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vcmpgtuh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vcmpgtuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(10u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vcmpgtud(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(11u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
 
-Error Assembler::vminub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(8u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vminuh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vminuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(10u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vminsb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(12u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vminsh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(13u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vminsw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(14u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmaxub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmaxuh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmaxuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmaxsb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmaxsh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmaxsw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 1u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vminub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(8u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vminuh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vminuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(10u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vminsb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(12u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vminsh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(13u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vminsw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(14u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmaxub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmaxuh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmaxuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmaxsb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmaxsh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmaxsw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 
-Error Assembler::vpkuhum(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpkuwum(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpkuhus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpkuwus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpkshss(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpkswss(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(7u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpkshus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpkswus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vupkhsb(Vr vrt, Vr vrb) { return emit32(encode_vx(8u, 7u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vupkhsh(Vr vrt, Vr vrb) { return emit32(encode_vx(9u, 7u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vupklsb(Vr vrt, Vr vrb) { return emit32(encode_vx(10u, 7u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vupklsh(Vr vrt, Vr vrb) { return emit32(encode_vx(11u, 7u, vrt.id(), 0, vrb.id())); }
+Error Assembler::vpkuhum(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpkuwum(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpkuhus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpkuwus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpkshss(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpkswss(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(7u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpkshus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpkswus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vupkhsb(Vr vrt, Vr vrb) { return emit32(encode_vx(8u, 7u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vupkhsh(Vr vrt, Vr vrb) { return emit32(encode_vx(9u, 7u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vupklsb(Vr vrt, Vr vrb) { return emit32(encode_vx(10u, 7u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vupklsh(Vr vrt, Vr vrb) { return emit32(encode_vx(11u, 7u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
 
-Error Assembler::vmrghb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 6u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmrghh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 6u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmrghw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 6u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmrglb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 6u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmrglh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 6u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmrglw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 6u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vmrghb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmrghh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmrghw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmrglb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmrglh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmrglw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 
 Error Assembler::vspltb(Vr vrt, Vr vrb, uint32_t uim) {
-  return emit32(encode_vx(8u, 6u, vrt.id(), uim & 0xFu, vrb.id()));
+  return emit32(encode_vx(8u, 6u, vr_field(vrt.id()), uim & 0xFu, vr_field(vrb.id())));
 }
 Error Assembler::vsplth(Vr vrt, Vr vrb, uint32_t uim) {
-  return emit32(encode_vx(9u, 6u, vrt.id(), uim & 0x7u, vrb.id()));
+  return emit32(encode_vx(9u, 6u, vr_field(vrt.id()), uim & 0x7u, vr_field(vrb.id())));
 }
 Error Assembler::vspltw(Vr vrt, Vr vrb, uint32_t uim) {
-  return emit32(encode_vx(10u, 6u, vrt.id(), uim & 0x3u, vrb.id()));
+  return emit32(encode_vx(10u, 6u, vr_field(vrt.id()), uim & 0x3u, vr_field(vrb.id())));
 }
 Error Assembler::vspltisb(Vr vrt, int32_t simm) {
-  return emit32(encode_vx(12u, 6u, vrt.id(), uint32_t(simm) & 0x1Fu, 0));
+  return emit32(encode_vx(12u, 6u, vr_field(vrt.id()), uint32_t(simm) & 0x1Fu, 0));
 }
 Error Assembler::vspltish(Vr vrt, int32_t simm) {
-  return emit32(encode_vx(13u, 6u, vrt.id(), uint32_t(simm) & 0x1Fu, 0));
+  return emit32(encode_vx(13u, 6u, vr_field(vrt.id()), uint32_t(simm) & 0x1Fu, 0));
 }
 Error Assembler::vspltisw(Vr vrt, int32_t simm) {
-  return emit32(encode_vx(14u, 6u, vrt.id(), uint32_t(simm) & 0x1Fu, 0));
+  return emit32(encode_vx(14u, 6u, vr_field(vrt.id()), uint32_t(simm) & 0x1Fu, 0));
 }
 
 Error Assembler::vperm(Vr vrt, Vr vra, Vr vrb, Vr vrc) {
-  return emit32((4u << 26) | (vrt.id() << 21) | (vra.id() << 16) | (vrb.id() << 11) |
-                (vrc.id() << 6) | (21u << 1) | 1u);
+  return emit32((4u << 26) | (vr_field(vrt.id()) << 21) | (vr_field(vra.id()) << 16) | (vr_field(vrb.id()) << 11) |
+                (vr_field(vrc.id()) << 6) | (21u << 1) | 1u);
 }
 Error Assembler::vsel(Vr vrt, Vr vra, Vr vrb, Vr vrc) {
-  return emit32((4u << 26) | (vrt.id() << 21) | (vra.id() << 16) | (vrb.id() << 11) |
-                (vrc.id() << 6) | (21u << 1));
+  return emit32((4u << 26) | (vr_field(vrt.id()) << 21) | (vr_field(vra.id()) << 16) | (vr_field(vrb.id()) << 11) |
+                (vr_field(vrc.id()) << 6) | (21u << 1));
 }
 Error Assembler::vsldoi(Vr vrt, Vr vra, Vr vrb, uint32_t shb) {
-  return emit32((4u << 26) | (vrt.id() << 21) | (vra.id() << 16) | (vrb.id() << 11) |
+  return emit32((4u << 26) | (vr_field(vrt.id()) << 21) | (vr_field(vra.id()) << 16) | (vr_field(vrb.id()) << 11) |
                 ((shb & 0xFu) << 6) | (22u << 1));
 }
 
-Error Assembler::vclzb(Vr vrt, Vr vrb) { return emit32(encode_vx(28u, 1u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vclzh(Vr vrt, Vr vrb) { return emit32(encode_vx(29u, 1u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vclzw(Vr vrt, Vr vrb) { return emit32(encode_vx(30u, 1u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vclzd(Vr vrt, Vr vrb) { return emit32(encode_vx(31u, 1u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vpopcntb(Vr vrt, Vr vrb) { return emit32(encode_vx(28u, 1u, vrt.id(), 0, vrb.id(), true)); }
-Error Assembler::vpopcnth(Vr vrt, Vr vrb) { return emit32(encode_vx(29u, 1u, vrt.id(), 0, vrb.id(), true)); }
-Error Assembler::vpopcntw(Vr vrt, Vr vrb) { return emit32(encode_vx(30u, 1u, vrt.id(), 0, vrb.id(), true)); }
-Error Assembler::vpopcntd(Vr vrt, Vr vrb) { return emit32(encode_vx(31u, 1u, vrt.id(), 0, vrb.id(), true)); }
+Error Assembler::vclzb(Vr vrt, Vr vrb) { return emit32(encode_vx(28u, 1u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vclzh(Vr vrt, Vr vrb) { return emit32(encode_vx(29u, 1u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vclzw(Vr vrt, Vr vrb) { return emit32(encode_vx(30u, 1u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vclzd(Vr vrt, Vr vrb) { return emit32(encode_vx(31u, 1u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vpopcntb(Vr vrt, Vr vrb) { return emit32(encode_vx(28u, 1u, vr_field(vrt.id()), 0, vr_field(vrb.id()), true)); }
+Error Assembler::vpopcnth(Vr vrt, Vr vrb) { return emit32(encode_vx(29u, 1u, vr_field(vrt.id()), 0, vr_field(vrb.id()), true)); }
+Error Assembler::vpopcntw(Vr vrt, Vr vrb) { return emit32(encode_vx(30u, 1u, vr_field(vrt.id()), 0, vr_field(vrb.id()), true)); }
+Error Assembler::vpopcntd(Vr vrt, Vr vrb) { return emit32(encode_vx(31u, 1u, vr_field(vrt.id()), 0, vr_field(vrb.id()), true)); }
 
-Error Assembler::vmulouw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmuluwm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 4u, vrt.id(), vra.id(), vrb.id(), true)); }
+Error Assembler::vmulouw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmuluwm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
 
 // Saturating adds.
-Error Assembler::vaddsbs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(12u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vaddshs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(13u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vaddsws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(14u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vaddubs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(8u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vadduhs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vadduws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(10u, 0u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vaddsbs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(12u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vaddshs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(13u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vaddsws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(14u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vaddubs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(8u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vadduhs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vadduws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(10u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 // Saturating subtracts.
-Error Assembler::vsubsbs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(28u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsubshs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(29u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsubsws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(30u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsububs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(24u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsubuhs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(25u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsubuws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(26u, 0u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vsubsbs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(28u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsubshs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(29u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsubsws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(30u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsububs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(24u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsubuhs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(25u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsubuws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(26u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 // 128-bit add/subtract with carry/borrow.
-Error Assembler::vaddcuq(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vadduqm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vaddeuqm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(30u, vrt.id(), vra.id(), vrb.id(), vrc.id())); }
-Error Assembler::vaddecuq(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(30u, vrt.id(), vra.id(), vrb.id(), vrc.id(), true)); }
-Error Assembler::vsubcuq(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(21u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsubuqm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(20u, 0u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsubeuqm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(31u, vrt.id(), vra.id(), vrb.id(), vrc.id())); }
-Error Assembler::vsubecuq(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(31u, vrt.id(), vra.id(), vrb.id(), vrc.id(), true)); }
+Error Assembler::vaddcuq(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vadduqm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vaddeuqm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(30u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()))); }
+Error Assembler::vaddecuq(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(30u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()), true)); }
+Error Assembler::vsubcuq(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(21u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsubuqm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(20u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsubeuqm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(31u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()))); }
+Error Assembler::vsubecuq(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(31u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()), true)); }
 // Absolute difference.
-Error Assembler::vabsdub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 1u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vabsduh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 1u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vabsduw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(18u, 1u, vrt.id(), vra.id(), vrb.id(), true)); }
+Error Assembler::vabsdub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vabsduh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vabsduw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(18u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
 
 // Byte/halfword shifts.
-Error Assembler::vslb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vslh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsrb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(8u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsrh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 2u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vslb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vslh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsrb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(8u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsrh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 // Shift by octet / variable.
-Error Assembler::vslo(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 6u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsro(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 6u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vslv(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(29u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsrv(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(28u, 2u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vslo(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsro(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vslv(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(29u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsrv(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(28u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 // Rotates.
-Error Assembler::vrlb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vrlh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vrlw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vrld(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 2u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vrlwmi(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 2u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vrlwnm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 2u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vrldmi(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 2u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vrldnm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(7u, 2u, vrt.id(), vra.id(), vrb.id(), true)); }
+Error Assembler::vrlb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vrlh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vrlw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vrld(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vrlwmi(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vrlwnm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vrldmi(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vrldnm(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(7u, 2u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
 
 // Compare not equal.
-Error Assembler::vcmpneb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 3u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vcmpneh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 3u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vcmpnew(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 3u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vcmpnezb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 3u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vcmpnezh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 3u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vcmpnezw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 3u, vrt.id(), vra.id(), vrb.id(), true)); }
+Error Assembler::vcmpneb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vcmpneh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vcmpnew(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(2u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vcmpnezb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vcmpnezh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vcmpnezw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 3u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
 
 // Doubleword min/max.
-Error Assembler::vmaxsd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(7u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmaxud(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vminsd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(15u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vminud(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(11u, 1u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vmaxsd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(7u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmaxud(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(3u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vminsd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(15u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vminud(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(11u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 // Averages.
-Error Assembler::vavgub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vavguh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vavguw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(18u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vavgsb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(20u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vavgsh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(21u, 1u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vavgsw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(22u, 1u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vavgub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vavguh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vavguw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(18u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vavgsb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(20u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vavgsh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(21u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vavgsw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(22u, 1u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 // Sum across.
-Error Assembler::vsum4sbs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(28u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsum4shs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(25u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsum4ubs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(24u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsum2sws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(26u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vsumsws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(30u, 4u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vsum4sbs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(28u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsum4shs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(25u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsum4ubs(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(24u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsum2sws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(26u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vsumsws(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(30u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 
 // Pack/unpack doubleword and pixel.
-Error Assembler::vpkudum(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpkudus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(19u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpksdss(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(23u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpksdus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(21u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vupkhsw(Vr vrt, Vr vrb) { return emit32(encode_vx(25u, 7u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vupklsw(Vr vrt, Vr vrb) { return emit32(encode_vx(27u, 7u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vpkpx(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(12u, 7u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vupkhpx(Vr vrt, Vr vrb) { return emit32(encode_vx(13u, 7u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vupklpx(Vr vrt, Vr vrb) { return emit32(encode_vx(15u, 7u, vrt.id(), 0, vrb.id())); }
+Error Assembler::vpkudum(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpkudus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(19u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpksdss(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(23u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpksdus(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(21u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vupkhsw(Vr vrt, Vr vrb) { return emit32(encode_vx(25u, 7u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vupklsw(Vr vrt, Vr vrb) { return emit32(encode_vx(27u, 7u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vpkpx(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(12u, 7u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vupkhpx(Vr vrt, Vr vrb) { return emit32(encode_vx(13u, 7u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vupklpx(Vr vrt, Vr vrb) { return emit32(encode_vx(15u, 7u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
 // Merge odd/even words.
-Error Assembler::vmrgew(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(30u, 6u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmrgow(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(26u, 6u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vmrgew(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(30u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmrgow(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(26u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 
 // Permute right-indexed / permute xor.
-Error Assembler::vpermr(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(29u, vrt.id(), vra.id(), vrb.id(), vrc.id(), true)); }
-Error Assembler::vpermxor(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(22u, vrt.id(), vra.id(), vrb.id(), vrc.id(), true)); }
+Error Assembler::vpermr(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(29u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()), true)); }
+Error Assembler::vpermxor(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(22u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()), true)); }
 
 // Count trailing zeros (VRA field holds a fixed element-size code).
-Error Assembler::vctzb(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 28u, vrb.id())); }
-Error Assembler::vctzh(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 29u, vrb.id())); }
-Error Assembler::vctzw(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 30u, vrb.id())); }
-Error Assembler::vctzd(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 31u, vrb.id())); }
+Error Assembler::vctzb(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 28u, vr_field(vrb.id()))); }
+Error Assembler::vctzh(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 29u, vr_field(vrb.id()))); }
+Error Assembler::vctzw(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 30u, vr_field(vrb.id()))); }
+Error Assembler::vctzd(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 31u, vr_field(vrb.id()))); }
 Error Assembler::vclzlsbb(Gp rt, Vr vrb) {
-  return emit32((4u << 26) | (rt.id() << 21) | (0u << 16) | (vrb.id() << 11) | (24u << 6) | (1u << 1));
+  return emit32((4u << 26) | (rt.id() << 21) | (0u << 16) | (vr_field(vrb.id()) << 11) | (24u << 6) | (1u << 1));
 }
 Error Assembler::vctzlsbb(Gp rt, Vr vrb) {
-  return emit32((4u << 26) | (rt.id() << 21) | (1u << 16) | (vrb.id() << 11) | (24u << 6) | (1u << 1));
+  return emit32((4u << 26) | (rt.id() << 21) | (1u << 16) | (vr_field(vrb.id()) << 11) | (24u << 6) | (1u << 1));
 }
 
 // Multiply even/odd.
-Error Assembler::vmuleub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(8u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmuleuh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmuleuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(10u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmulesb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(12u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmulesh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(13u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmulesw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(14u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmuloub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmulouh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmulosb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmulosh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vmulosw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 4u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vmuleub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(8u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmuleuh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmuleuw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(10u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmulesb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(12u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmulesh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(13u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmulesw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(14u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmuloub(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(0u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmulouh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmulosb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(4u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmulosh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(5u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vmulosw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(6u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 // Multiply by 10.
-Error Assembler::vmul10cuq(Vr vrt, Vr vra) { return emit32(encode_vx(0u, 0u, vrt.id(), vra.id(), 0, true)); }
-Error Assembler::vmul10uq(Vr vrt, Vr vra) { return emit32(encode_vx(8u, 0u, vrt.id(), vra.id(), 0, true)); }
-Error Assembler::vmul10euq(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 0u, vrt.id(), vra.id(), vrb.id(), true)); }
-Error Assembler::vmul10ecuq(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 0u, vrt.id(), vra.id(), vrb.id(), true)); }
+Error Assembler::vmul10cuq(Vr vrt, Vr vra) { return emit32(encode_vx(0u, 0u, vr_field(vrt.id()), vr_field(vra.id()), 0, true)); }
+Error Assembler::vmul10uq(Vr vrt, Vr vra) { return emit32(encode_vx(8u, 0u, vr_field(vrt.id()), vr_field(vra.id()), 0, true)); }
+Error Assembler::vmul10euq(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(9u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
+Error Assembler::vmul10ecuq(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(1u, 0u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), true)); }
 // Multiply-high-add / multiply-sum.
-Error Assembler::vmhaddshs(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(16u, vrt.id(), vra.id(), vrb.id(), vrc.id())); }
-Error Assembler::vmhraddshs(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(16u, vrt.id(), vra.id(), vrb.id(), vrc.id(), true)); }
-Error Assembler::vmladduhm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(17u, vrt.id(), vra.id(), vrb.id(), vrc.id())); }
-Error Assembler::vmsummbm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(18u, vrt.id(), vra.id(), vrb.id(), vrc.id(), true)); }
-Error Assembler::vmsumshm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(20u, vrt.id(), vra.id(), vrb.id(), vrc.id())); }
-Error Assembler::vmsumshs(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(20u, vrt.id(), vra.id(), vrb.id(), vrc.id(), true)); }
-Error Assembler::vmsumubm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(18u, vrt.id(), vra.id(), vrb.id(), vrc.id())); }
-Error Assembler::vmsumudm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(17u, vrt.id(), vra.id(), vrb.id(), vrc.id(), true)); }
-Error Assembler::vmsumuhm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(19u, vrt.id(), vra.id(), vrb.id(), vrc.id())); }
-Error Assembler::vmsumuhs(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(19u, vrt.id(), vra.id(), vrb.id(), vrc.id(), true)); }
+Error Assembler::vmhaddshs(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(16u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()))); }
+Error Assembler::vmhraddshs(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(16u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()), true)); }
+Error Assembler::vmladduhm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(17u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()))); }
+Error Assembler::vmsummbm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(18u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()), true)); }
+Error Assembler::vmsumshm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(20u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()))); }
+Error Assembler::vmsumshs(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(20u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()), true)); }
+Error Assembler::vmsumubm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(18u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()))); }
+Error Assembler::vmsumudm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(17u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()), true)); }
+Error Assembler::vmsumuhm(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(19u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()))); }
+Error Assembler::vmsumuhs(Vr vrt, Vr vra, Vr vrb, Vr vrc) { return emit32(encode_va(19u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()), vr_field(vrc.id()), true)); }
 // Polynomial multiply-sum.
-Error Assembler::vpmsumb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpmsumh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpmsumw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(18u, 4u, vrt.id(), vra.id(), vrb.id())); }
-Error Assembler::vpmsumd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(19u, 4u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vpmsumb(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(16u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpmsumh(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(17u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpmsumw(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(18u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
+Error Assembler::vpmsumd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(19u, 4u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 
 // Extract element (UIM in the VRA field).
-Error Assembler::vextractub(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(8u, 6u, vrt.id(), uim & 0xFu, vrb.id(), true)); }
-Error Assembler::vextractuh(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(9u, 6u, vrt.id(), uim & 0xFu, vrb.id(), true)); }
-Error Assembler::vextractuw(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(10u, 6u, vrt.id(), uim & 0xFu, vrb.id(), true)); }
-Error Assembler::vextractd(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(11u, 6u, vrt.id(), uim & 0xFu, vrb.id(), true)); }
+Error Assembler::vextractub(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(8u, 6u, vr_field(vrt.id()), uim & 0xFu, vr_field(vrb.id()), true)); }
+Error Assembler::vextractuh(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(9u, 6u, vr_field(vrt.id()), uim & 0xFu, vr_field(vrb.id()), true)); }
+Error Assembler::vextractuw(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(10u, 6u, vr_field(vrt.id()), uim & 0xFu, vr_field(vrb.id()), true)); }
+Error Assembler::vextractd(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(11u, 6u, vr_field(vrt.id()), uim & 0xFu, vr_field(vrb.id()), true)); }
 // Extract element indexed (GPR address).
 Error Assembler::vextublx(Gp rt, Gp ra, Vr vrb) {
-  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vrb.id() << 11) | (24u << 6) | (6u << 1) | 1u);
+  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vr_field(vrb.id()) << 11) | (24u << 6) | (6u << 1) | 1u);
 }
 Error Assembler::vextubrx(Gp rt, Gp ra, Vr vrb) {
-  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vrb.id() << 11) | (28u << 6) | (6u << 1) | 1u);
+  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vr_field(vrb.id()) << 11) | (28u << 6) | (6u << 1) | 1u);
 }
 Error Assembler::vextuhlx(Gp rt, Gp ra, Vr vrb) {
-  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vrb.id() << 11) | (25u << 6) | (6u << 1) | 1u);
+  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vr_field(vrb.id()) << 11) | (25u << 6) | (6u << 1) | 1u);
 }
 Error Assembler::vextuhrx(Gp rt, Gp ra, Vr vrb) {
-  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vrb.id() << 11) | (29u << 6) | (6u << 1) | 1u);
+  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vr_field(vrb.id()) << 11) | (29u << 6) | (6u << 1) | 1u);
 }
 Error Assembler::vextuwlx(Gp rt, Gp ra, Vr vrb) {
-  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vrb.id() << 11) | (26u << 6) | (6u << 1) | 1u);
+  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vr_field(vrb.id()) << 11) | (26u << 6) | (6u << 1) | 1u);
 }
 Error Assembler::vextuwrx(Gp rt, Gp ra, Vr vrb) {
-  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vrb.id() << 11) | (30u << 6) | (6u << 1) | 1u);
+  return emit32((4u << 26) | (rt.id() << 21) | (ra.id() << 16) | (vr_field(vrb.id()) << 11) | (30u << 6) | (6u << 1) | 1u);
 }
 // Insert element (UIM in the VRA field).
-Error Assembler::vinsertb(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(12u, 6u, vrt.id(), uim & 0xFu, vrb.id(), true)); }
-Error Assembler::vinserth(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(13u, 6u, vrt.id(), uim & 0xFu, vrb.id(), true)); }
-Error Assembler::vinsertw(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(14u, 6u, vrt.id(), uim & 0xFu, vrb.id(), true)); }
-Error Assembler::vinsertd(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(15u, 6u, vrt.id(), uim & 0xFu, vrb.id(), true)); }
+Error Assembler::vinsertb(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(12u, 6u, vr_field(vrt.id()), uim & 0xFu, vr_field(vrb.id()), true)); }
+Error Assembler::vinserth(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(13u, 6u, vr_field(vrt.id()), uim & 0xFu, vr_field(vrb.id()), true)); }
+Error Assembler::vinsertw(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(14u, 6u, vr_field(vrt.id()), uim & 0xFu, vr_field(vrb.id()), true)); }
+Error Assembler::vinsertd(Vr vrt, Vr vrb, uint32_t uim) { return emit32(encode_vx(15u, 6u, vr_field(vrt.id()), uim & 0xFu, vr_field(vrb.id()), true)); }
 
 // Sign extend (VRA field holds a fixed source-size code).
-Error Assembler::vextsb2w(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 16u, vrb.id())); }
-Error Assembler::vextsh2w(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 17u, vrb.id())); }
-Error Assembler::vextsw2d(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 26u, vrb.id())); }
-Error Assembler::vextsb2d(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 24u, vrb.id())); }
-Error Assembler::vextsh2d(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 25u, vrb.id())); }
-Error Assembler::vnegw(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 6u, vrb.id())); }
-Error Assembler::vnegd(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 7u, vrb.id())); }
-Error Assembler::vprtybd(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 9u, vrb.id())); }
-Error Assembler::vprtybw(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 8u, vrb.id())); }
-Error Assembler::vprtybq(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vrt.id(), 10u, vrb.id())); }
+Error Assembler::vextsb2w(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 16u, vr_field(vrb.id()))); }
+Error Assembler::vextsh2w(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 17u, vr_field(vrb.id()))); }
+Error Assembler::vextsw2d(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 26u, vr_field(vrb.id()))); }
+Error Assembler::vextsb2d(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 24u, vr_field(vrb.id()))); }
+Error Assembler::vextsh2d(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 25u, vr_field(vrb.id()))); }
+Error Assembler::vnegw(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 6u, vr_field(vrb.id()))); }
+Error Assembler::vnegd(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 7u, vr_field(vrb.id()))); }
+Error Assembler::vprtybd(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 9u, vr_field(vrb.id()))); }
+Error Assembler::vprtybw(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 8u, vr_field(vrb.id()))); }
+Error Assembler::vprtybq(Vr vrt, Vr vrb) { return emit32(encode_vx(24u, 1u, vr_field(vrt.id()), 10u, vr_field(vrb.id()))); }
 // Gather bits / bit permute.
-Error Assembler::vgbbd(Vr vrt, Vr vrb) { return emit32(encode_vx(20u, 6u, vrt.id(), 0, vrb.id())); }
-Error Assembler::vbpermd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(23u, 6u, vrt.id(), vra.id(), vrb.id())); }
+Error Assembler::vgbbd(Vr vrt, Vr vrb) { return emit32(encode_vx(20u, 6u, vr_field(vrt.id()), 0, vr_field(vrb.id()))); }
+Error Assembler::vbpermd(Vr vrt, Vr vra, Vr vrb) { return emit32(encode_vx(23u, 6u, vr_field(vrt.id()), vr_field(vra.id()), vr_field(vrb.id()))); }
 
 Error Assembler::prolog(int32_t frame_size, uint32_t save_mask, uint32_t fpr_mask, uint32_t vr_mask) {
   if (ASMJIT_UNLIKELY(!_code)) {
